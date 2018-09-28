@@ -1,2 +1,2 @@
 # Intelligent-Agents
-Code of exercises of the class Intelligent Agents, EPFL
+Files from the projects of the class Intelligent Agents

@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage[top=0.8in, bottom=0.8in, left=0.8in, right=0.8in]{geometry}
+% Add other packages here %
+
+
+
+% Put your group number and names in the author field %
+\title{\bf Excercise 1.\\ Implementing a first Application in RePast: A Rabbits Grass Simulation.}
+\author{Group \textnumero 24: Lucas Burget, Lucas Waelti}
+
+\begin{document}
+\maketitle
+
+\section{Implementation}
+
+\subsection{Assumptions}
+% Describe the assumptions of your world model and implementation (e.g. is the grass amount bounded in each cell) %
+The world is built on a discrete grid where grass can grow and rabbits can move around. Each cell can only contain 1 unit of grass. If a rabbit comes to a place with grass, it will eat it and no grass will be left until some grass gets randomly added here. 
+
+Two rabbits (agents) can never be on the same position. At each step, each rabbits move left/right/up or down. If they encounter some grass after moving, they eat it and gain one unit of energy. Otherwise, they lose one unit of energy. 
+
+\subsection{Implementation Remarks}
+% Provide important details about your implementation, such as handling of boundary conditions %
+As only one unit of grass can be assigned to a location, when spreading grass across the grid, the program will try to find a free spot at random. It does not have an infinite amount of tries and therefore it is possible that less grass grows at a certain time step than what is indicated with the grass's grow rate. It made sense to proceed in this way because if some grass cannot be placed, it means that the space is already saturated with grass, hence the population of rabbits is low or has even vanished. 
+
+Sort of the same principle is implemented for the rabbits but is less likely to happen. Indeed, a rabbit that would be surrounded by four other rabbits might not be able to move. It will try to pick a random place but if does not succeed before a given amount of tries, it will have to stay where it is. If some grass grows beneath it, it can then eat it. 
+
+\section{Results}
+% In this section, you study and describe how different variables (e.g. birth threshold, grass growth rate etc.) or combinations of variables influence the results. Different experiments with diffrent settings are described below with your observations and analysis
+
+\subsection{Experiment 1}
+
+\subsubsection{Setting}
+
+\subsubsection{Observations}
+% Elaborate on the observed results %
+
+\subsection{Experiment 2}
+
+\subsubsection{Setting}
+
+\subsubsection{Observations}
+% Elaborate on the observed results %
+
+\vdots
+
+\subsection{Experiment n}
+
+\subsubsection{Setting}
+
+\subsubsection{Observations}
+% Elaborate on the observed results %
+
+\end{document}
