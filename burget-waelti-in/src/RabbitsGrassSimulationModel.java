@@ -198,13 +198,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 		
 		class ModelStep extends BasicAction{
 			public void execute() {
-				// Let agents with sufficient energy reproduce
-				for(int i=0; i<agentList.size(); i++)
-				{
-					RabbitsGrassSimulationAgent agent = (RabbitsGrassSimulationAgent)agentList.get(i);
-					if(agent.canReproduce(birthThres) && agentList.size() < gridXSize*gridYSize) // Avoid over-populating the grid
-						addNewAgent(agentEnergy);
-				}
 				// Kill all agents that ran out of energy
 				for(int i=(agentList.size()-1); i>=0 ; i--)
 				{
@@ -215,7 +208,13 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 						agentList.remove(i);
 					}
 				}
-				
+				// Let agents with sufficient energy reproduce
+				for(int i=0; i<agentList.size(); i++)
+				{
+					RabbitsGrassSimulationAgent agent = (RabbitsGrassSimulationAgent)agentList.get(i);
+					if(agent.canReproduce(birthThres) && agentList.size() < gridXSize*gridYSize) // Avoid over-populating the grid
+						addNewAgent(agentEnergy);
+				}
 				// Step all agents
 				for(int i=0; i<agentList.size(); i++)
 				{
