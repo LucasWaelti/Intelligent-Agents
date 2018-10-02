@@ -28,7 +28,7 @@ import uchicago.src.sim.gui.Object2DDisplay;// GUI -> Displays Objects
  * order to run Repast simulation. It manages the entire RePast
  * environment and the simulation.
  *
- * @Author Lucas Waelti
+ * @Author Lucas Waelti Lucas Burget
  */
 
 
@@ -156,6 +156,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 		if(displaySurf != null)
 			displaySurf.dispose();
 		displaySurf = null;
+		
 		// Recreate a new display
 		displaySurf = new DisplaySurface(this,"Rabbit Grass Simulation");
 		registerDisplaySurface("Rabbit Grass Simulation",displaySurf);
@@ -208,6 +209,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 						agentList.remove(i);
 					}
 				}
+				
 				// Let agents with sufficient energy reproduce
 				for(int i=0; i<agentList.size(); i++)
 				{
@@ -215,6 +217,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 					if(agent.canReproduce(birthThres) && agentList.size() < gridXSize*gridYSize) // Avoid over-populating the grid
 						addNewAgent(agentEnergy);
 				}
+				
 				// Step all agents
 				for(int i=0; i<agentList.size(); i++)
 				{
@@ -222,7 +225,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl{
 					agent.step();
 					//System.out.println("Energy: "+agent.getEnergy());
 				}
-				
 				
 				// Make grass grow
 				rgSpace.growGrass(grassGRate, grassEnergy);

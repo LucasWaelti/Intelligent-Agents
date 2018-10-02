@@ -1,8 +1,11 @@
 /MainRabbit.class
 /RabbitsGrassSimulationAgent.class
-/RabbitsGrassSimulationModel$1ActionToExecute.class
-/RabbitsGrassSimulationModel$1ModelStep.class
 /RabbitsGrassSimulationModel$agentsInSpace.class
 /RabbitsGrassSimulationModel$grassInSpace.class
 /RabbitsGrassSimulationModel.class
 /RabbitsGrassSimulationSpace.class
+/RabbitsGrassSimulationModel$1ActionToExecute.class
+/RabbitsGrassSimulationModel$1ModelStep.class
+/.classpath
+/.gitignore
+/.project

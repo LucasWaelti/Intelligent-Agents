@@ -1,6 +1,6 @@
 /**
  * Class that implements the simulation space of the rabbits grass simulation.
- * @Author Lucas Waelti
+ * @Author Lucas Waelti Lucas Burget
  */
 
 import uchicago.src.sim.space.Object2DGrid;

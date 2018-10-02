@@ -9,7 +9,7 @@ import uchicago.src.sim.space.Object2DGrid;
 /**
  * Class that implements the simulation agent for the rabbits grass simulation.
 
- * @Author Lucas Waelti
+ * @Author Lucas Waelti Lucas Burget
  */
 
 public class RabbitsGrassSimulationAgent implements Drawable {
