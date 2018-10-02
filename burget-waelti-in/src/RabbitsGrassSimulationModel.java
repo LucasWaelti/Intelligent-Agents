@@ -28,7 +28,7 @@ import uchicago.src.sim.gui.Object2DDisplay;// GUI -> Displays Objects
  * order to run Repast simulation. It manages the entire RePast
  * environment and the simulation.
  *
- * @Author Lucas Waelti
+ * @Author Lucas Waelti Lucas Burget
  */
 
 
