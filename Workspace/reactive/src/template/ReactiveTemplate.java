@@ -19,6 +19,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
+	
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
