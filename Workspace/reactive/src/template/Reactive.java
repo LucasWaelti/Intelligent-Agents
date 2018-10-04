@@ -120,7 +120,7 @@ public class Reactive implements ReactiveBehavior {
 			reward = (long) -cost;
 			break;
 		case 1:
-			reward = this.td.reward(from, to) - (long) cost;
+			reward = this.td.reward(from, to) - (long) cost; // expected reward
 			break;
 		}
 		
