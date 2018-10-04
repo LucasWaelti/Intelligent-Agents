@@ -16,14 +16,18 @@ import logist.topology.Topology;
 import logist.topology.Topology.City;
 
 public class Reactive implements ReactiveBehavior {
+	
+	private final int NUMSTATE = 2;
+	private final long MAXVALUE = 1000;
 
 	private Random random;
 	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
+	private Topology topology;
+	private TaskDistribution td;
 	
-	private ArrayList<ArrayList<Double>> value;// = new ArrayList<ArrayList<ArrayList<Double>>>(10);
-	private ArrayList<ArrayList<ArrayList<Double>>> reward;
+	private ArrayList<ArrayList<Long>> value;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -37,6 +41,8 @@ public class Reactive implements ReactiveBehavior {
 		this.pPickup = discount;
 		this.numActions = 0;
 		this.myAgent = agent;
+		this.topology = topology;
+		this.td = td;
 		
 		displayTopologyInfo(topology, td);
 		buildValueFunction(topology);
@@ -91,8 +97,44 @@ public class Reactive implements ReactiveBehavior {
 		}
 	}
 	
-	private void buildReward() {
+	private int getCostPerKm() {
+		List<Vehicle> vehicles = this.myAgent.vehicles();
+		if(vehicles.size() > 1)
+			System.out.println("Warning in getReward(): more than one vehicle for this agent. Taking first vehicle.");
+		else if(vehicles.size() < 1)
+		{
+			System.out.println("Error in getReward(): Current agent has no vehicle. Returning null.");
+			return -1;
+		} 
+		Vehicle v = vehicles.get(0);
+		return v.costPerKm();
+	}
+	
+	private long getReward(City from, City to, int action) {
+		// Get reward when just moving or picking a task
+		long reward = 0;
+		double cost = from.distanceTo(to) * getCostPerKm();
 		
+		switch(action) {
+		case 0:
+			reward = (long) -cost;
+			break;
+		case 1:
+			reward = this.td.reward(from, to) - (long) cost;
+			break;
+		}
+		
+		return reward;
+	}
+	// Overload: get reward of a given task
+	private long getReward(Task task) {
+		// Get reward when picking a task and moving to target
+		long reward = 0;
+		double cost = task.pickupCity.distanceTo(task.deliveryCity) * getCostPerKm();
+		
+		reward = task.reward - (long) cost;
+		
+		return reward;
 	}
 	
 	private void buildTransition() {
@@ -101,14 +143,17 @@ public class Reactive implements ReactiveBehavior {
 	
 	private void buildValueFunction(Topology topology) {
 		
-		value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
+		this.value = new ArrayList<ArrayList<Long>>(topology.size()); // x along cities, y along states
 		
 		for(City city : topology)
 		{
-			int city_id = city.id;
-			break;
+			this.value.set(city.id, new ArrayList<Long>(this.NUMSTATE));
+			
+			this.value.get(city.id).set(0, (long) (Math.random() * this.MAXVALUE));
+			this.value.get(city.id).set(1, (long) (Math.random() * this.MAXVALUE));
 		}
 		return;
 	}
 	
 }
+
