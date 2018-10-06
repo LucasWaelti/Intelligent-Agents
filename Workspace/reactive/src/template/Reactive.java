@@ -46,8 +46,9 @@ public class Reactive implements ReactiveBehavior {
 		this.topology = topology;
 		this.td = td;
 		
-		displayTopologyInfo(topology, td);
+		//displayTopologyInfo(topology, td);
 		buildValueFunction(topology);
+		learnValueFunction(discount);
 	}
 
 	@Override
@@ -150,15 +151,23 @@ public class Reactive implements ReactiveBehavior {
 	
 	private void buildValueFunction(Topology topology) {
 		
-		this.value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
-		
+		/*this.value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
 		for(City city : topology)
 		{
 			this.value.set(city.id, new ArrayList<Double>(this.NUMSTATE));
 			
 			this.value.get(city.id).set(0, (double) (Math.random() * this.MAXVALUE));
 			this.value.get(city.id).set(1, (double) (Math.random() * this.MAXVALUE));
+		} OH SHIT, DOES NOT WORK!! DO AS FOLLOWS*/
+		this.value = new ArrayList<ArrayList<Double>>();
+		for(City city : topology)
+		{
+			this.value.add(new ArrayList<Double>());
+			
+			this.value.get(city.id).add((double) (Math.random() * this.MAXVALUE));
+			this.value.get(city.id).add((double) (Math.random() * this.MAXVALUE));
 		}
+		
 		return;
 	}
 	
@@ -236,7 +245,7 @@ public class Reactive implements ReactiveBehavior {
 				}
 			}
 			error /= k; // Compute average difference between Q and V (over all states)
-		}while(error > this.TOLERANCE);
+		}while(Math.abs(error) > this.TOLERANCE);
 		
 		System.out.println("...Done!");
 	}
