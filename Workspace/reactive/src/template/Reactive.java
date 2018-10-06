@@ -20,6 +20,10 @@ public class Reactive implements ReactiveBehavior {
 	private final int NUMSTATE = 2;
 	private final long MAXVALUE = 1000;
 	private final int NUMACTION = 2;
+	private final int STATE_0 = 0;
+	private final int STATE_1 = 0;
+
+
 
 	private Random random;
 	private double pPickup;
@@ -138,13 +142,17 @@ public class Reactive implements ReactiveBehavior {
 		return reward;
 	}
 	
-	private void buildTransition() {
-		// TODO
-	}
+	
 	
 	private double getTransitionProbability(City n, int s_prime) {
-		// TODO
-		return 0.5;
+		double proba =  0.0;
+		if (s_prime==STATE_0){
+			proba = this.td.probability(n, null);
+		}
+		else if(s_prime == STATE_1) {
+			proba = 1-this.td.probability(n, null);
+		}		
+		return proba;
 	}
 	
 	private void buildValueFunction(Topology topology) {
