@@ -20,6 +20,7 @@ public class Reactive implements ReactiveBehavior {
 	private final int NUMSTATE = 2;
 	private final long MAXVALUE = 1000;
 	private final int NUMACTION = 2;
+	private final double TOLERANCE = 0.1;
 
 	private Random random;
 	private double pPickup;
@@ -121,7 +122,7 @@ public class Reactive implements ReactiveBehavior {
 			reward = (long) -cost;
 			break;
 		case 1:
-			reward = this.td.reward(from, to) - (long) cost;
+			reward = (long) (this.td.probability(from, to) * this.td.reward(from, to) - cost);
 			break;
 		}
 		
@@ -177,41 +178,67 @@ public class Reactive implements ReactiveBehavior {
 		double Q = 0;
 		double Q_max = 0;
 		
-		for(City c : this.topology) // for each city
-		{
-			for(int s=0; s<this.NUMSTATE; s++) // for each state
+		int k = 0;
+		double error = 0;
+		
+		do {
+			k = 0;
+			error = 0;
+			for(City c : this.topology) // for each city
 			{
-				Q_max = 0;
-				for(int a=0; a<this.NUMACTION; a++) // for each action
+				for(int s=0; s<this.NUMSTATE; s++) // for each state
 				{
-					if (a == 0) // if just moving
+					Q_max = 0;
+					for(int a=0; a<this.NUMACTION; a++) // for each action
 					{
-						neighbors = c.neighbors();
-						for(City n : neighbors) // for moving from c towards each neighbor
+						if (a == 0) // if just moving
 						{
-							reward = getReward(c, n, a);
-							tv = 0;
-							for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given neighbor
+							neighbors = c.neighbors();
+							for(City n : neighbors) // for moving from c towards each neighbor
 							{
-								T = getTransitionProbability(n,s_prime);
-								V = getValueFunction(n,s_prime);
-								tv += T*V;
+								reward = getReward(c, n, a);
+								tv = 0;
+								for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given neighbor
+								{
+									T = getTransitionProbability(n,s_prime);
+									V = getValueFunction(n,s_prime);
+									tv += T*V;
+								}
+								Q = reward + discount * tv;
+								if(Q > Q_max)
+									Q_max = Q;
 							}
-							Q = reward + discount * tv;
-							if(Q > Q_max)
-								Q_max = Q;
+						}
+						else if (a == 1) // if picking a task from c for each destination
+						{
+							for(City d : this.topology) // for each possible destination
+							{
+								if(c.id == d.id)
+									continue; // No task from and to the same city
+								
+								reward = getReward(c,d,a);
+								tv = 0;
+								for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given destination
+								{
+									T = getTransitionProbability(d,s_prime);
+									V = getValueFunction(d,s_prime);
+									tv += T*V;
+								}
+								Q = reward + discount * tv;
+								if(Q > Q_max)
+									Q_max = Q;
+							}
 						}
 					}
-					else if (a == 1) // for picking a task from c for each destination
-					{
-						// TODO (same pattern as for a==0)
-					}
+					k += 1;
+					error += this.value.get(c.id).get(s) - Q_max;
+					this.value.get(c.id).set(s, Q_max); // assign value function to current state
 				}
-				this.value.get(c.id).set(s, Q_max); // assign value function to current state
 			}
-		}
+			error /= k; // Compute average difference between Q and V (over all states)
+		}while(error > this.TOLERANCE);
+		
 		System.out.println("...Done!");
 	}
-	
 }
 
