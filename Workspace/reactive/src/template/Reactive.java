@@ -20,6 +20,10 @@ public class Reactive implements ReactiveBehavior {
 	private final int NUMSTATE = 2;
 	private final long MAXVALUE = 1000;
 	private final int NUMACTION = 2;
+	private final int STATE_0 = 0;
+	private final int STATE_1 = 1;
+	private final int MOVE = 0;
+	private final int PICKUP = 1;
 	private final double TOLERANCE = 0.1;
 
 	private Random random;
@@ -30,6 +34,7 @@ public class Reactive implements ReactiveBehavior {
 	private TaskDistribution td;
 	
 	private ArrayList<ArrayList<Double>> value;
+	private ArrayList<ArrayList<ArrayList<PolicyAction>>> bestAction;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -140,13 +145,17 @@ public class Reactive implements ReactiveBehavior {
 		return reward;
 	}
 	
-	private void buildTransition() {
-		// TODO
-	}
+	
 	
 	private double getTransitionProbability(City n, int s_prime) {
-		// TODO
-		return 0.5;
+		double proba =  0.0;
+		if (s_prime==STATE_0){
+			proba = this.td.probability(n, null);
+		}
+		else if(s_prime == STATE_1) {
+			proba = 1-this.td.probability(n, null);
+		}		
+		return proba;
 	}
 	
 	private void buildValueFunction(Topology topology) {
@@ -248,6 +257,103 @@ public class Reactive implements ReactiveBehavior {
 		}while(Math.abs(error) > this.TOLERANCE);
 		
 		System.out.println("...Done!");
+	}
+
+	
+	private class PolicyAction{
+		private int action;
+		private City nextCity;
+		
+		public PolicyAction(City city, int bestAction) {
+			action=bestAction;
+			nextCity=city;
+		}
+		public int getAction() {
+			return action;
+		}
+		public void setAction(int action) {
+			this.action = action;
+		}
+		public City getNextCity() {
+			return nextCity;
+		}
+		public void setNextCity(City nextCity) {
+			this.nextCity = nextCity;
+		}
+		
+	} 
+	
+	
+	private PolicyAction getBestAction(City currentCity, int state, City destinationCity) {
+		return this.bestAction.get(currentCity.id).get(state).get(destinationCity.id);
+	}
+	
+	
+	private void bestAction(double discount) {
+		this.bestAction = new ArrayList<ArrayList<ArrayList<PolicyAction>>>();
+		for (City city : topology) { // through all cities
+			this.bestAction.add(new ArrayList<ArrayList<PolicyAction>>());
+			
+			for (int state=0; state<NUMSTATE; state++) { // through S1 and S2
+				this.bestAction.get(city.id).add(new ArrayList<PolicyAction>()) ;
+				
+				int bestAction;
+				City bestDest;
+				double sum = -Double.MAX_VALUE ;
+				double maxSum = -Double.MAX_VALUE ;
+				
+				switch(state) {
+				case STATE_0:
+					for(City neighborCity: city.neighbors()) { //move to a neighbor
+						double T_0 = 0, V_0=0, V_1=0, T_1=0;
+						double immediateReward = this.getReward(city, neighborCity, MOVE); 
+						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
+						V_0 = this.getValueFunction(neighborCity,  STATE_0);
+						T_1 = this.getTransitionProbability(neighborCity, STATE_1);
+						V_1 = this.getValueFunction(neighborCity,  STATE_1);
+						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
+						if (sum>maxSum) {
+							maxSum=sum;
+							bestAction=MOVE;
+							bestDest=neighborCity;
+						}
+					}
+					this.bestAction.get(city.id).get(state).add(0, new PolicyAction(bestDest, bestAction));
+
+				case STATE_1:
+					for(City neighborCity: city.neighbors()) { //move to a neighbor
+						double T_0 = 0, V_0=0, V_1=0, T_1=0;
+						double immediateReward = this.getReward(city, neighborCity, action); 
+						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
+						V_0 = this.getValueFunction(neighborCity,  STATE_0);
+						T_1 = this.getTransitionProbability(neighborCity, STATE_1);
+						V_1 = this.getValueFunction(neighborCity,  STATE_1);
+						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
+						if (sum>maxSum) {
+							maxSum=sum;
+							bestAction=MOVE;
+							bestDest=neighborCity;
+						}
+					}
+					for (City allCity : topology ) { // pickup and move to all city
+	
+						double T_0 = 0, V_0=0, V_1=0, T_1=0;
+						double immediateReward = this.getReward(city, allCity, action); 
+						T_0 = this.getTransitionProbability(allCity, STATE_0);
+						V_0 = this.getValueFunction(allCity,  STATE_0);
+						T_1 = this.getTransitionProbability(allCity, STATE_1);
+						V_1 = this.getValueFunction(allCity,  STATE_1);
+						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
+						if (sum>maxSum) {
+							maxSum=sum;
+							bestAction=PICKUP;
+							bestDest=null;
+						}
+						this.bestAction.get(city.id).get(state).add(allCity.id, new PolicyAction(bestDest, bestAction));
+					}					
+				}
+			}	
+		} 
 	}
 }
 
