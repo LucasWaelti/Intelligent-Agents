@@ -323,7 +323,7 @@ public class Reactive implements ReactiveBehavior {
 				case STATE_1:
 					for(City neighborCity: city.neighbors()) { //move to a neighbor
 						double T_0 = 0, V_0=0, V_1=0, T_1=0;
-						double immediateReward = this.getReward(city, neighborCity, action); 
+						double immediateReward = this.getReward(city, neighborCity, MOVE); 
 						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
 						V_0 = this.getValueFunction(neighborCity,  STATE_0);
 						T_1 = this.getTransitionProbability(neighborCity, STATE_1);
@@ -336,20 +336,24 @@ public class Reactive implements ReactiveBehavior {
 						}
 					}
 					for (City allCity : topology ) { // pickup and move to all city
-	
-						double T_0 = 0, V_0=0, V_1=0, T_1=0;
-						double immediateReward = this.getReward(city, allCity, action); 
-						T_0 = this.getTransitionProbability(allCity, STATE_0);
-						V_0 = this.getValueFunction(allCity,  STATE_0);
-						T_1 = this.getTransitionProbability(allCity, STATE_1);
-						V_1 = this.getValueFunction(allCity,  STATE_1);
-						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
-						if (sum>maxSum) {
-							maxSum=sum;
-							bestAction=PICKUP;
-							bestDest=null;
+						if(allCity.id == city.id) {
+							continue;
 						}
-						this.bestAction.get(city.id).get(state).add(allCity.id, new PolicyAction(bestDest, bestAction));
+						else {
+							double T_0 = 0, V_0=0, V_1=0, T_1=0;
+							double immediateReward = this.getReward(city, allCity, PICKUP); 
+							T_0 = this.getTransitionProbability(allCity, STATE_0);
+							V_0 = this.getValueFunction(allCity,  STATE_0);
+							T_1 = this.getTransitionProbability(allCity, STATE_1);
+							V_1 = this.getValueFunction(allCity,  STATE_1);
+							sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
+							if (sum>maxSum) {
+								maxSum=sum;
+								bestAction=PICKUP;
+								bestDest=null;
+							}
+							this.bestAction.get(city.id).get(state).add(allCity.id, new PolicyAction(bestDest, bestAction));
+						}
 					}					
 				}
 			}	
