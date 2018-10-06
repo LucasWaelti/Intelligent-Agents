@@ -19,6 +19,7 @@ public class Reactive implements ReactiveBehavior {
 	
 	private final int NUMSTATE = 2;
 	private final long MAXVALUE = 1000;
+	private final int NUMACTION = 2;
 
 	private Random random;
 	private double pPickup;
@@ -27,7 +28,7 @@ public class Reactive implements ReactiveBehavior {
 	private Topology topology;
 	private TaskDistribution td;
 	
-	private ArrayList<ArrayList<Long>> value;
+	private ArrayList<ArrayList<Double>> value;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -39,7 +40,7 @@ public class Reactive implements ReactiveBehavior {
 
 		this.random = new Random();
 		this.pPickup = discount;
-		this.numActions = 0;
+		this.numActions = NUMACTION;
 		this.myAgent = agent;
 		this.topology = topology;
 		this.td = td;
@@ -120,7 +121,7 @@ public class Reactive implements ReactiveBehavior {
 			reward = (long) -cost;
 			break;
 		case 1:
-			reward = this.td.reward(from, to) - (long) cost; // expected reward
+			reward = this.td.reward(from, to) - (long) cost;
 			break;
 		}
 		
@@ -138,21 +139,78 @@ public class Reactive implements ReactiveBehavior {
 	}
 	
 	private void buildTransition() {
-		
+		// TODO
+	}
+	
+	private double getTransitionProbability(City n, int s_prime) {
+		// TODO
+		return 0.5;
 	}
 	
 	private void buildValueFunction(Topology topology) {
 		
-		this.value = new ArrayList<ArrayList<Long>>(topology.size()); // x along cities, y along states
+		this.value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
 		
 		for(City city : topology)
 		{
-			this.value.set(city.id, new ArrayList<Long>(this.NUMSTATE));
+			this.value.set(city.id, new ArrayList<Double>(this.NUMSTATE));
 			
-			this.value.get(city.id).set(0, (long) (Math.random() * this.MAXVALUE));
-			this.value.get(city.id).set(1, (long) (Math.random() * this.MAXVALUE));
+			this.value.get(city.id).set(0, (double) (Math.random() * this.MAXVALUE));
+			this.value.get(city.id).set(1, (double) (Math.random() * this.MAXVALUE));
 		}
 		return;
+	}
+	
+	private double getValueFunction(City city, int state) {
+		return this.value.get(city.id).get(state);
+	}
+	
+	private void learnValueFunction(double discount) {
+		
+		System.out.println("Learning Value Function...");
+		
+		List<City> neighbors;
+		long reward = 0;
+		double T = 0;
+		double V = 0;
+		double tv = 0;
+		double Q = 0;
+		double Q_max = 0;
+		
+		for(City c : this.topology) // for each city
+		{
+			for(int s=0; s<this.NUMSTATE; s++) // for each state
+			{
+				Q_max = 0;
+				for(int a=0; a<this.NUMACTION; a++) // for each action
+				{
+					if (a == 0) // if just moving
+					{
+						neighbors = c.neighbors();
+						for(City n : neighbors) // for moving from c towards each neighbor
+						{
+							reward = getReward(c, n, a);
+							tv = 0;
+							for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given neighbor
+							{
+								T = getTransitionProbability(n,s_prime);
+								V = getValueFunction(n,s_prime);
+								tv += T*V;
+							}
+							Q = reward + discount * tv;
+							if(Q > Q_max)
+								Q_max = Q;
+						}
+					}
+					else if (a == 1) // for picking a task from c for each destination
+					{
+						// TODO (same pattern as for a==0)
+					}
+				}
+				this.value.get(c.id).set(s, Q_max); // assign value function to current state
+			}
+		}
+		System.out.println("...Done!");
 	}
 	
 }
