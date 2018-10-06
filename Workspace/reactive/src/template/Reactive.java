@@ -35,6 +35,29 @@ public class Reactive implements ReactiveBehavior {
 	
 	private ArrayList<ArrayList<Double>> value;
 	private ArrayList<ArrayList<ArrayList<PolicyAction>>> bestAction;
+	
+	private class PolicyAction{
+		private int action;
+		private City nextCity;
+		
+		public PolicyAction(City city, int bestAction) {
+			action=bestAction;
+			nextCity=city;
+		}
+		public int getAction() {
+			return action;
+		}
+		public void setAction(int action) {
+			this.action = action;
+		}
+		public City getNextCity() {
+			return nextCity;
+		}
+		public void setNextCity(City nextCity) {
+			this.nextCity = nextCity;
+		}
+		
+	} 
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -46,13 +69,13 @@ public class Reactive implements ReactiveBehavior {
 
 		this.random = new Random();
 		this.pPickup = discount;
-		this.numActions = NUMACTION;
+		this.numActions = 0;
 		this.myAgent = agent;
 		this.topology = topology;
 		this.td = td;
 		
-		//displayTopologyInfo(topology, td);
-		buildValueFunction(topology);
+		// Initialize the controller
+		buildValueFunction();
 		learnValueFunction(discount);
 	}
 
@@ -77,34 +100,6 @@ public class Reactive implements ReactiveBehavior {
 		return action;
 	}
 	
-	private void displayTopologyInfo(Topology topology, TaskDistribution td) {
-		System.out.println("/*************************Info*************************/");
-		System.out.println("Topology, " + topology.size() + " cities:");
-		System.out.println(topology.cities());
-		for(City city : topology) // Use an iterator through all cities
-		{
-			System.out.println("City: " + (topology.cities()).get(city.id) ); // Get city name 
-			System.out.println("City id: " + city.id);						  // Get city id
-			System.out.println("City neighbors: ");							  // Show neighbors
-			// city.neighbors(); returns a list of neighbor cities
-			for(City n : city) // Display neighbors of each city
-			{
-				System.out.println(n);
-			}
-		}
-		
-		System.out.println("\nAgent related info:");
-		System.out.println("Agent's vehicles:" + this.myAgent.vehicles() +" "+ this.myAgent.vehicles().size() +" vehicles in total");
-		System.out.println("Agent's tasks (accepted or not picked or delivered yet): \n" + this.myAgent.getTasks());
-		
-		System.out.println("\nTask related info:");
-		System.out.println("Probability of presence for each city:");
-		for(City city : topology)
-		{
-			System.out.println("P(task in " + (topology.cities()).get(city.id) + ") = " + (1 - td.probability(city, null)));
-		}
-	}
-	
 	private int getCostPerKm() {
 		List<Vehicle> vehicles = this.myAgent.vehicles();
 		if(vehicles.size() > 1)
@@ -124,11 +119,11 @@ public class Reactive implements ReactiveBehavior {
 		double cost = from.distanceTo(to) * getCostPerKm();
 		
 		switch(action) {
-		case 0:
+		case MOVE:
 			reward = (long) -cost;
 			break;
-		case 1:
-			reward = (long) (this.td.probability(from, to) * this.td.reward(from, to) - cost);
+		case PICKUP:
+			reward = (long) (this.td.probability(from, to) * (this.td.reward(from, to) - cost));
 			break;
 		}
 		
@@ -158,18 +153,10 @@ public class Reactive implements ReactiveBehavior {
 		return proba;
 	}
 	
-	private void buildValueFunction(Topology topology) {
-		
-		/*this.value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
-		for(City city : topology)
-		{
-			this.value.set(city.id, new ArrayList<Double>(this.NUMSTATE));
-			
-			this.value.get(city.id).set(0, (double) (Math.random() * this.MAXVALUE));
-			this.value.get(city.id).set(1, (double) (Math.random() * this.MAXVALUE));
-		} OH SHIT, DOES NOT WORK!! DO AS FOLLOWS*/
+	private void buildValueFunction() {
+
 		this.value = new ArrayList<ArrayList<Double>>();
-		for(City city : topology)
+		for(City city : this.topology)
 		{
 			this.value.add(new ArrayList<Double>());
 			
@@ -209,7 +196,7 @@ public class Reactive implements ReactiveBehavior {
 					Q_max = 0;
 					for(int a=0; a<this.NUMACTION; a++) // for each action
 					{
-						if (a == 0) // if just moving
+						if (a == this.STATE_0) // if just moving
 						{
 							neighbors = c.neighbors();
 							for(City n : neighbors) // for moving from c towards each neighbor
@@ -227,7 +214,7 @@ public class Reactive implements ReactiveBehavior {
 									Q_max = Q;
 							}
 						}
-						else if (a == 1) // if picking a task from c for each destination
+						else if (a == this.STATE_1) // if picking a task from c for each destination
 						{
 							for(City d : this.topology) // for each possible destination
 							{
@@ -260,51 +247,74 @@ public class Reactive implements ReactiveBehavior {
 	}
 
 	
-	private class PolicyAction{
-		private int action;
-		private City nextCity;
+	private Action bestAction(Vehicle vehicle, Task availableTask) {
+		Action action = null;
+		double expectedReward = - Double.MAX_VALUE;
+		double intermediateReward = 0;
 		
-		public PolicyAction(City city, int bestAction) {
-			action=bestAction;
-			nextCity=city;
-		}
-		public int getAction() {
-			return action;
-		}
-		public void setAction(int action) {
-			this.action = action;
-		}
-		public City getNextCity() {
-			return nextCity;
-		}
-		public void setNextCity(City nextCity) {
-			this.nextCity = nextCity;
+		City currentCity = vehicle.getCurrentCity();
+		// First consider going to neighbors city
+		for(City n : currentCity.neighbors())
+		{
+			// Calculate expected reward for this neighbor
+			intermediateReward = getReward(currentCity, n, this.MOVE); // Immediate reward
+			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
+			{
+				intermediateReward += getTransitionProbability(n,s)*getValueFunction(n,s);
+			}
+			if(intermediateReward > expectedReward)
+			{
+				expectedReward = intermediateReward;
+				action = new Move(n);
+			}
 		}
 		
-	} 
-	
+		// Then check if a task is available. See if it potentially brings more reward. 
+		if (availableTask != null) 
+		{
+			intermediateReward = getReward(availableTask); // Immediate reward
+			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
+			{
+				intermediateReward += getTransitionProbability(availableTask.deliveryCity,s)*getValueFunction(availableTask.deliveryCity,s);
+			}
+			if(intermediateReward > expectedReward)
+			{
+				expectedReward = intermediateReward;
+				action = new Pickup(availableTask);
+			}
+		} 
+		
+		return action;
+	}
 	
 	private PolicyAction getBestAction(City currentCity, int state, City destinationCity) {
 		return this.bestAction.get(currentCity.id).get(state).get(destinationCity.id);
 	}
 	
-	
-	private void bestAction(double discount) {
+	private void buildPolicy(double discount) {
+		
+		// As stated in the issue, this might actually not be the right way to handle it...
+		
+		System.out.println("Building Policy...");
+		
 		this.bestAction = new ArrayList<ArrayList<ArrayList<PolicyAction>>>();
-		for (City city : topology) { // through all cities
-			this.bestAction.add(new ArrayList<ArrayList<PolicyAction>>());
+		for (City city : topology) 
+		{ // through all cities
+			this.bestAction.add(new ArrayList<ArrayList<PolicyAction>>());				// 1
 			
-			for (int state=0; state<NUMSTATE; state++) { // through S1 and S2
-				this.bestAction.get(city.id).add(new ArrayList<PolicyAction>()) ;
+			for (int state=0; state<NUMSTATE; state++) 
+			{ // through S1 and S2
+				this.bestAction.get(city.id).add(new ArrayList<PolicyAction>()) ;		// 2
 				
-				int bestAction;
-				City bestDest;
+				int bestAction = 0;
+				City bestDest = null;
 				double sum = -Double.MAX_VALUE ;
 				double maxSum = -Double.MAX_VALUE ;
 				
 				switch(state) {
 				case STATE_0:
-					for(City neighborCity: city.neighbors()) { //move to a neighbor
+					for(City neighborCity: city.neighbors()) 
+					{ //move to a neighbor
 						double T_0 = 0, V_0=0, V_1=0, T_1=0;
 						double immediateReward = this.getReward(city, neighborCity, MOVE); 
 						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
@@ -358,6 +368,8 @@ public class Reactive implements ReactiveBehavior {
 				}
 			}	
 		} 
+		
+		System.out.println("...Done!");
 	}
 }
 
