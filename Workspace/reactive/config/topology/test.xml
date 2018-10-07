@@ -8,16 +8,17 @@
 		<city x= "100" y="100" name="A" />
 		<city x="100" y= "200" name="B" />
 		<city x="200" y= "100" name="C"/>
-		<city x="200" y="200" name="D"/>
+		<city x="200" y= "200" name="D"/>
 	</cities>
 
 	<!-- the list of routes in the topology -->
 	<routes>
 		<route distance="100" from="A" to="B"/>
-		<route distance="100" from="A" to="C"/>
+		<route distance="10000" from="A" to="C"/>
 		<route distance="100" from="A" to="D"/>
-		<route distance="100" from="B" to="C"/>
+		<route distance="10000" from="B" to="C"/>
 		<route distance="100" from="B" to="D"/>
+		<route distance="10000" from="D" to="C"/>
 	</routes>
 
 </topology>
