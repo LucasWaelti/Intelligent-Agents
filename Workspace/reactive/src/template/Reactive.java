@@ -24,13 +24,14 @@ public class Reactive implements ReactiveBehavior {
 	private final int STATE_1 = 1;
 	private final int MOVE = 0;
 	private final int PICKUP = 1;
-	private final double TOLERANCE = 0.1;
+	private final double TOLERANCE = 0.001;
 
 	private int numActions;
 	private Agent myAgent;
 	private Topology topology;
 	private TaskDistribution td;
 	private double discount;
+	private double cumulatedReward = 0;
 	
 	private ArrayList<ArrayList<Double>> value;
 
@@ -54,14 +55,18 @@ public class Reactive implements ReactiveBehavior {
 
 	@Override
 	public Action act(Vehicle vehicle, Task availableTask) {
-		//Action action;
 		
-		if (numActions >= 1) {
+		Action action = getBestAction(vehicle,availableTask);
+		
+		/*if (numActions >= 1) {
 			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
-		}
+		}*/
+		
 		numActions++;
 		
-		return getBestAction(vehicle,availableTask);
+		System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated "+this.cumulatedReward+" reward after "+numActions+" actions.");
+		
+		return action;
 	}
 	
 	private int getCostPerKm() {
@@ -139,7 +144,6 @@ public class Reactive implements ReactiveBehavior {
 		
 		System.out.println("Learning Value Function...");
 		
-		List<City> neighbors;
 		long reward = 0;
 		double T = 0;
 		double V = 0;
@@ -160,10 +164,9 @@ public class Reactive implements ReactiveBehavior {
 					Q_max = 0;
 					for(int a=0; a<this.NUMACTION; a++) // for each action
 					{
-						if (a == this.STATE_0) // if just moving
+						if (a == this.MOVE) // if just moving
 						{
-							neighbors = c.neighbors();
-							for(City n : neighbors) // for moving from c towards each neighbor
+							for(City n : c.neighbors()) // for moving from c towards each neighbor
 							{
 								reward = getReward(c, n, a);
 								tv = 0;
@@ -178,7 +181,7 @@ public class Reactive implements ReactiveBehavior {
 									Q_max = Q;
 							}
 						}
-						else if (a == this.STATE_1) // if picking a task from c for each destination
+						else if (a == this.PICKUP) // if picking a task from c for each destination
 						{
 							for(City d : this.topology) // for each possible destination
 							{
@@ -215,6 +218,7 @@ public class Reactive implements ReactiveBehavior {
 		Action action = null;
 		double expectedReward = - Double.MAX_VALUE;
 		double intermediateReward = 0;
+		double immediateReward = 0;
 		
 		City currentCity = vehicle.getCurrentCity();
 		// First consider going to neighbors city
@@ -228,12 +232,13 @@ public class Reactive implements ReactiveBehavior {
 			}
 			if(intermediateReward > expectedReward)
 			{
+				immediateReward = getReward(currentCity, n, this.MOVE);
 				expectedReward = intermediateReward;
 				action = new Move(n);
 			}
 		}
 		
-		// Then check if a task is available. See if it potentially brings more reward. 
+		// Then check if a task is available. See if it eventually brings more reward. 
 		if (availableTask != null && availableTask.weight <= vehicle.capacity()) 
 		{
 			intermediateReward = getReward(availableTask); // Immediate reward
@@ -243,10 +248,13 @@ public class Reactive implements ReactiveBehavior {
 			}
 			if(intermediateReward > expectedReward)
 			{
+				immediateReward = getReward(availableTask);
 				expectedReward = intermediateReward;
 				action = new Pickup(availableTask);
 			}
 		} 
+		
+		this.cumulatedReward += immediateReward;
 		
 		return action;
 	}
