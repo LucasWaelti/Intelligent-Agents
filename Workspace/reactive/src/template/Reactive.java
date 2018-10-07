@@ -1,7 +1,7 @@
 package template;
 
 import java.util.List;
-import java.util.Random;
+//import java.util.Random;
 import java.util.ArrayList;
 
 import logist.simulation.Vehicle;
@@ -16,99 +16,238 @@ import logist.topology.Topology;
 import logist.topology.Topology.City;
 
 public class Reactive implements ReactiveBehavior {
+	
+	private final int NUMSTATE = 2;
+	private final long MAXVALUE = 1000;
+	private final int NUMACTION = 2;
+	private final int STATE_0 = 0;
+	private final int STATE_1 = 1;
+	private final int MOVE = 0;
+	private final int PICKUP = 1;
+	private final double TOLERANCE = 0.1;
 
-	private Random random;
-	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
+	private Topology topology;
+	private TaskDistribution td;
+	private double discount;
 	
-	private ArrayList<ArrayList<Double>> value;// = new ArrayList<ArrayList<ArrayList<Double>>>(10);
-	private ArrayList<ArrayList<ArrayList<Double>>> reward;
+	private ArrayList<ArrayList<Double>> value;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
 
 		// Reads the discount factor from the agents.xml file.
 		// If the property is not present it defaults to 0.95
-		Double discount = agent.readProperty("discount-factor", Double.class,
+		this.discount = agent.readProperty("discount-factor", Double.class,
 				0.95);
 
-		this.random = new Random();
-		this.pPickup = discount;
 		this.numActions = 0;
 		this.myAgent = agent;
+		this.topology = topology;
+		this.td = td;
 		
-		displayTopologyInfo(topology, td);
-		buildValueFunction(topology);
+		// Initialize the controller
+		buildValueFunction();
+		learnValueFunction(discount);
 	}
 
 	@Override
 	public Action act(Vehicle vehicle, Task availableTask) {
-		Action action;
-		
-		System.out.println("I am an intelligent agent!");
-
-		if (availableTask == null || random.nextDouble() > pPickup) {
-			City currentCity = vehicle.getCurrentCity();
-			action = new Move(currentCity.randomNeighbor(random));
-		} else {
-			action = new Pickup(availableTask);
-		}
+		//Action action;
 		
 		if (numActions >= 1) {
 			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
 		}
 		numActions++;
 		
-		return action;
+		return getBestAction(vehicle,availableTask);
 	}
 	
-	private void displayTopologyInfo(Topology topology, TaskDistribution td) {
-		System.out.println("/*************************Info*************************/");
-		System.out.println("Topology, " + topology.size() + " cities:");
-		System.out.println(topology.cities());
-		for(City city : topology) // Use an iterator through all cities
+	private int getCostPerKm() {
+		List<Vehicle> vehicles = this.myAgent.vehicles();
+		if(vehicles.size() > 1)
+			System.out.println("Warning in getReward(): more than one vehicle for this agent. Taking first vehicle.");
+		else if(vehicles.size() < 1)
 		{
-			System.out.println("City: " + (topology.cities()).get(city.id) ); // Get city name 
-			System.out.println("City id: " + city.id);						  // Get city id
-			System.out.println("City neighbors: ");							  // Show neighbors
-			// city.neighbors(); returns a list of neighbor cities
-			for(City n : city) // Display neighbors of each city
-			{
-				System.out.println(n);
-			}
-		}
-		
-		System.out.println("\nAgent related info:");
-		System.out.println("Agent's vehicles:" + this.myAgent.vehicles() +" "+ this.myAgent.vehicles().size() +" vehicles in total");
-		System.out.println("Agent's tasks (accepted or not picked or delivered yet): \n" + this.myAgent.getTasks());
-		
-		System.out.println("\nTask related info:");
-		System.out.println("Probability of presence for each city:");
-		for(City city : topology)
-		{
-			System.out.println("P(task in " + (topology.cities()).get(city.id) + ") = " + (1 - td.probability(city, null)));
-		}
+			System.out.println("Error in getReward(): Current agent has no vehicle. Returning null.");
+			return -1;
+		} 
+		Vehicle v = vehicles.get(0);
+		return v.costPerKm();
 	}
 	
-	private void buildReward() {
+	private long getReward(City from, City to, int action) {
+		// Get reward when just moving or picking a task
+		long reward = 0;
+		double cost = from.distanceTo(to) * getCostPerKm();
 		
-	}
-	
-	private void buildTransition() {
-		
-	}
-	
-	private void buildValueFunction(Topology topology) {
-		
-		value = new ArrayList<ArrayList<Double>>(topology.size()); // x along cities, y along states
-		
-		for(City city : topology)
-		{
-			int city_id = city.id;
+		switch(action) {
+		case MOVE:
+			reward = (long) -cost;
+			break;
+		case PICKUP:
+			reward = (long) (this.td.probability(from, to) * (this.td.reward(from, to) - cost));
 			break;
 		}
+		
+		return reward;
+	}
+	// Overload: get reward of a given task
+	private long getReward(Task task) {
+		// Get reward when picking a task and moving to target
+		long reward = 0;
+		double cost = task.pickupCity.distanceTo(task.deliveryCity) * getCostPerKm();
+		
+		reward = task.reward - (long) cost;
+		
+		return reward;
+	}
+	
+	
+	
+	private double getTransitionProbability(City n, int s_prime) {
+		double proba =  0.0;
+		if (s_prime==STATE_0){
+			proba = this.td.probability(n, null);
+		}
+		else if(s_prime == STATE_1) {
+			proba = 1-this.td.probability(n, null);
+		}		
+		return proba;
+	}
+	
+	private void buildValueFunction() {
+
+		this.value = new ArrayList<ArrayList<Double>>();
+		for(City city : this.topology)
+		{
+			this.value.add(new ArrayList<Double>());
+			
+			this.value.get(city.id).add((double) (Math.random() * this.MAXVALUE));
+			this.value.get(city.id).add((double) (Math.random() * this.MAXVALUE));
+		}
+		
 		return;
 	}
 	
+	private double getValueFunction(City city, int state) {
+		return this.value.get(city.id).get(state);
+	}
+	
+	private void learnValueFunction(double discount) {
+		
+		System.out.println("Learning Value Function...");
+		
+		List<City> neighbors;
+		long reward = 0;
+		double T = 0;
+		double V = 0;
+		double tv = 0;
+		double Q = 0;
+		double Q_max = 0;
+		
+		int k = 0;
+		double error = 0;
+		
+		do {
+			k = 0;
+			error = 0;
+			for(City c : this.topology) // for each city
+			{
+				for(int s=0; s<this.NUMSTATE; s++) // for each state
+				{
+					Q_max = 0;
+					for(int a=0; a<this.NUMACTION; a++) // for each action
+					{
+						if (a == this.STATE_0) // if just moving
+						{
+							neighbors = c.neighbors();
+							for(City n : neighbors) // for moving from c towards each neighbor
+							{
+								reward = getReward(c, n, a);
+								tv = 0;
+								for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given neighbor
+								{
+									T = getTransitionProbability(n,s_prime);
+									V = getValueFunction(n,s_prime);
+									tv += T*V;
+								}
+								Q = reward + discount * tv;
+								if(Q > Q_max)
+									Q_max = Q;
+							}
+						}
+						else if (a == this.STATE_1) // if picking a task from c for each destination
+						{
+							for(City d : this.topology) // for each possible destination
+							{
+								if(c.id == d.id)
+									continue; // No task from and to the same city
+								
+								reward = getReward(c,d,a);
+								tv = 0;
+								for(int s_prime=0; s_prime<this.NUMSTATE; s_prime++) // Get all states for the given destination
+								{
+									T = getTransitionProbability(d,s_prime);
+									V = getValueFunction(d,s_prime);
+									tv += T*V;
+								}
+								Q = reward + discount * tv;
+								if(Q > Q_max)
+									Q_max = Q;
+							}
+						}
+					}
+					k += 1;
+					error += this.value.get(c.id).get(s) - Q_max;
+					this.value.get(c.id).set(s, Q_max); // assign value function to current state
+				}
+			}
+			error /= k; // Compute average difference between Q and V (over all states)
+		}while(Math.abs(error) > this.TOLERANCE);
+		
+		System.out.println("...Done!");
+	}
+
+	
+	private Action getBestAction(Vehicle vehicle, Task availableTask) {
+		Action action = null;
+		double expectedReward = - Double.MAX_VALUE;
+		double intermediateReward = 0;
+		
+		City currentCity = vehicle.getCurrentCity();
+		// First consider going to neighbors city
+		for(City n : currentCity.neighbors())
+		{
+			// Calculate expected reward for this neighbor
+			intermediateReward = getReward(currentCity, n, this.MOVE); // Immediate reward
+			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
+			{
+				intermediateReward += this.discount*getTransitionProbability(n,s)*getValueFunction(n,s);
+			}
+			if(intermediateReward > expectedReward)
+			{
+				expectedReward = intermediateReward;
+				action = new Move(n);
+			}
+		}
+		
+		// Then check if a task is available. See if it potentially brings more reward. 
+		if (availableTask != null && availableTask.weight <= vehicle.capacity()) 
+		{
+			intermediateReward = getReward(availableTask); // Immediate reward
+			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
+			{
+				intermediateReward += this.discount*getTransitionProbability(availableTask.deliveryCity,s)*getValueFunction(availableTask.deliveryCity,s);
+			}
+			if(intermediateReward > expectedReward)
+			{
+				expectedReward = intermediateReward;
+				action = new Pickup(availableTask);
+			}
+		} 
+		
+		return action;
+	}
 }
