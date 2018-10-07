@@ -1,7 +1,7 @@
 package template;
 
 import java.util.List;
-import java.util.Random;
+//import java.util.Random;
 import java.util.ArrayList;
 
 import logist.simulation.Vehicle;
@@ -26,49 +26,22 @@ public class Reactive implements ReactiveBehavior {
 	private final int PICKUP = 1;
 	private final double TOLERANCE = 0.1;
 
-	private Random random;
-	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
 	private Topology topology;
 	private TaskDistribution td;
+	private double discount;
 	
 	private ArrayList<ArrayList<Double>> value;
-	private ArrayList<ArrayList<ArrayList<PolicyAction>>> bestAction;
-	
-	private class PolicyAction{
-		private int action;
-		private City nextCity;
-		
-		public PolicyAction(City city, int bestAction) {
-			action=bestAction;
-			nextCity=city;
-		}
-		public int getAction() {
-			return action;
-		}
-		public void setAction(int action) {
-			this.action = action;
-		}
-		public City getNextCity() {
-			return nextCity;
-		}
-		public void setNextCity(City nextCity) {
-			this.nextCity = nextCity;
-		}
-		
-	} 
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
 
 		// Reads the discount factor from the agents.xml file.
 		// If the property is not present it defaults to 0.95
-		Double discount = agent.readProperty("discount-factor", Double.class,
+		this.discount = agent.readProperty("discount-factor", Double.class,
 				0.95);
 
-		this.random = new Random();
-		this.pPickup = discount;
 		this.numActions = 0;
 		this.myAgent = agent;
 		this.topology = topology;
@@ -81,23 +54,14 @@ public class Reactive implements ReactiveBehavior {
 
 	@Override
 	public Action act(Vehicle vehicle, Task availableTask) {
-		Action action;
-		
-		System.out.println("I am an intelligent agent!");
-
-		if (availableTask == null || random.nextDouble() > pPickup) {
-			City currentCity = vehicle.getCurrentCity();
-			action = new Move(currentCity.randomNeighbor(random));
-		} else {
-			action = new Pickup(availableTask);
-		}
+		//Action action;
 		
 		if (numActions >= 1) {
 			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
 		}
 		numActions++;
 		
-		return action;
+		return getBestAction(vehicle,availableTask);
 	}
 	
 	private int getCostPerKm() {
@@ -247,7 +211,7 @@ public class Reactive implements ReactiveBehavior {
 	}
 
 	
-	private Action bestAction(Vehicle vehicle, Task availableTask) {
+	private Action getBestAction(Vehicle vehicle, Task availableTask) {
 		Action action = null;
 		double expectedReward = - Double.MAX_VALUE;
 		double intermediateReward = 0;
@@ -260,7 +224,7 @@ public class Reactive implements ReactiveBehavior {
 			intermediateReward = getReward(currentCity, n, this.MOVE); // Immediate reward
 			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
 			{
-				intermediateReward += getTransitionProbability(n,s)*getValueFunction(n,s);
+				intermediateReward += this.discount*getTransitionProbability(n,s)*getValueFunction(n,s);
 			}
 			if(intermediateReward > expectedReward)
 			{
@@ -270,12 +234,12 @@ public class Reactive implements ReactiveBehavior {
 		}
 		
 		// Then check if a task is available. See if it potentially brings more reward. 
-		if (availableTask != null) 
+		if (availableTask != null && availableTask.weight <= vehicle.capacity()) 
 		{
 			intermediateReward = getReward(availableTask); // Immediate reward
 			for(int s=0;s<this.NUMSTATE; s++) // Predicted reward
 			{
-				intermediateReward += getTransitionProbability(availableTask.deliveryCity,s)*getValueFunction(availableTask.deliveryCity,s);
+				intermediateReward += this.discount*getTransitionProbability(availableTask.deliveryCity,s)*getValueFunction(availableTask.deliveryCity,s);
 			}
 			if(intermediateReward > expectedReward)
 			{
@@ -286,90 +250,4 @@ public class Reactive implements ReactiveBehavior {
 		
 		return action;
 	}
-	
-	private PolicyAction getBestAction(City currentCity, int state, City destinationCity) {
-		return this.bestAction.get(currentCity.id).get(state).get(destinationCity.id);
-	}
-	
-	private void buildPolicy(double discount) {
-		
-		// As stated in the issue, this might actually not be the right way to handle it...
-		
-		System.out.println("Building Policy...");
-		
-		this.bestAction = new ArrayList<ArrayList<ArrayList<PolicyAction>>>();
-		for (City city : topology) 
-		{ // through all cities
-			this.bestAction.add(new ArrayList<ArrayList<PolicyAction>>());				// 1
-			
-			for (int state=0; state<NUMSTATE; state++) 
-			{ // through S1 and S2
-				this.bestAction.get(city.id).add(new ArrayList<PolicyAction>()) ;		// 2
-				
-				int bestAction = 0;
-				City bestDest = null;
-				double sum = -Double.MAX_VALUE ;
-				double maxSum = -Double.MAX_VALUE ;
-				
-				switch(state) {
-				case STATE_0:
-					for(City neighborCity: city.neighbors()) 
-					{ //move to a neighbor
-						double T_0 = 0, V_0=0, V_1=0, T_1=0;
-						double immediateReward = this.getReward(city, neighborCity, MOVE); 
-						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
-						V_0 = this.getValueFunction(neighborCity,  STATE_0);
-						T_1 = this.getTransitionProbability(neighborCity, STATE_1);
-						V_1 = this.getValueFunction(neighborCity,  STATE_1);
-						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
-						if (sum>maxSum) {
-							maxSum=sum;
-							bestAction=MOVE;
-							bestDest=neighborCity;
-						}
-					}
-					this.bestAction.get(city.id).get(state).add(0, new PolicyAction(bestDest, bestAction));
-
-				case STATE_1:
-					for(City neighborCity: city.neighbors()) { //move to a neighbor
-						double T_0 = 0, V_0=0, V_1=0, T_1=0;
-						double immediateReward = this.getReward(city, neighborCity, MOVE); 
-						T_0 = this.getTransitionProbability(neighborCity, STATE_0);
-						V_0 = this.getValueFunction(neighborCity,  STATE_0);
-						T_1 = this.getTransitionProbability(neighborCity, STATE_1);
-						V_1 = this.getValueFunction(neighborCity,  STATE_1);
-						sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
-						if (sum>maxSum) {
-							maxSum=sum;
-							bestAction=MOVE;
-							bestDest=neighborCity;
-						}
-					}
-					for (City allCity : topology ) { // pickup and move to all city
-						if(allCity.id == city.id) {
-							continue;
-						}
-						else {
-							double T_0 = 0, V_0=0, V_1=0, T_1=0;
-							double immediateReward = this.getReward(city, allCity, PICKUP); 
-							T_0 = this.getTransitionProbability(allCity, STATE_0);
-							V_0 = this.getValueFunction(allCity,  STATE_0);
-							T_1 = this.getTransitionProbability(allCity, STATE_1);
-							V_1 = this.getValueFunction(allCity,  STATE_1);
-							sum =immediateReward+ discount*(T_0*V_0+T_1*V_1);
-							if (sum>maxSum) {
-								maxSum=sum;
-								bestAction=PICKUP;
-								bestDest=null;
-							}
-							this.bestAction.get(city.id).get(state).add(allCity.id, new PolicyAction(bestDest, bestAction));
-						}
-					}					
-				}
-			}	
-		} 
-		
-		System.out.println("...Done!");
-	}
 }
-
