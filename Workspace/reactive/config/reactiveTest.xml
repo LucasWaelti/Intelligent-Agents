@@ -18,7 +18,7 @@
 			the probabilities, rewards and weight of tasks
 		-->
 		<probability distribution="constant" value="0.5" />
-		<reward distribution="constant" value="10" />
+		<reward distribution="constant" value="100" />
 		<weight distribution="constant" value="3" />
 		
 		<!--
@@ -33,7 +33,7 @@
 			<!-- the first vehicle (blue) -->
 			<vehicle name="Vehicle 1">
 				<set color="#0000ff" />
-				<set home="Paris" />
+				<set home="A" />
 				<set speed="220" />
 				<set capacity="30" />
 				<set cost-per-km="5" />

@@ -1,5 +1,6 @@
 package template;
 
+import java.util.List;
 import java.util.Random;
 
 import logist.simulation.Vehicle;
@@ -19,7 +20,11 @@ public class ReactiveTemplate implements ReactiveBehavior {
 	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
-	
+	private double cumulatedReward = 0;
+	private final int MOVE = 0;
+	private final int PICKUP = 1;
+	private TaskDistribution td;
+
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -41,16 +46,57 @@ public class ReactiveTemplate implements ReactiveBehavior {
 
 		if (availableTask == null || random.nextDouble() > pPickup) {
 			City currentCity = vehicle.getCurrentCity();
-			action = new Move(currentCity.randomNeighbor(random));
+			City nextCity = currentCity.randomNeighbor(random);
+			action = new Move(nextCity);
+			this.cumulatedReward += this.getReward(currentCity, nextCity, MOVE);
 		} else {
 			action = new Pickup(availableTask);
+			this.cumulatedReward += this.getReward(availableTask);
 		}
 		
 		if (numActions >= 1) {
 			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
+			System.out.println("perso The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(this.cumulatedReward / (double)numActions)+")");
 		}
 		numActions++;
 		
 		return action;
+	}
+	
+	
+	private long getReward(City from, City to, int action) {
+		// Get reward when just moving or picking a task
+		long reward = 0;
+		double cost = from.distanceTo(to) * getCostPerKm();
+		
+		switch(action) {
+		case MOVE:
+			reward = (long) -cost;
+			break;
+		case PICKUP:
+			reward = (long) (this.td.probability(from, to) * (this.td.reward(from, to) - cost));
+			break;
+		}
+		return reward;
+	}
+	// Overload: get reward of a given task
+	private long getReward(Task task) {
+		// Get reward when picking a task and moving to target
+		long reward = 0;
+		double cost = task.pickupCity.distanceTo(task.deliveryCity) * getCostPerKm();
+		reward = task.reward - (long) cost;
+		return reward;
+	}
+	private int getCostPerKm() {
+		List<Vehicle> vehicles = this.myAgent.vehicles();
+		if(vehicles.size() > 1)
+			System.out.println("Warning in getReward(): more than one vehicle for this agent. Taking first vehicle.");
+		else if(vehicles.size() < 1)
+		{
+			System.out.println("Error in getReward(): Current agent has no vehicle. Returning null.");
+			return -1;
+		} 
+		Vehicle v = vehicles.get(0);
+		return v.costPerKm();
 	}
 }
