@@ -52,7 +52,7 @@ public class Reactive implements ReactiveBehavior {
 		buildValueFunction();
 		learnValueFunction(discount);
 		
-		System.out.println(value);
+		System.out.println("Value Function (discount="+discount+") = "+value);
 		
 	}
 
@@ -61,14 +61,11 @@ public class Reactive implements ReactiveBehavior {
 		
 		Action action = getBestAction(vehicle,availableTask);
 		
-		/*if (numActions >= 1) {
-			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
-		}*/
-		
+		if(numActions >= 1) {
+			System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated reward is "+this.cumulatedReward+" after "+(numActions+1)+" actions" + " (average reward per action : " + (this.cumulatedReward/(this.numActions+1)) );
+			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit per action: "+(myAgent.getTotalProfit() / (double)this.numActions)+")");
+		}
 		numActions++;
-		
-		System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated "+this.cumulatedReward+" reward after "+numActions+" actions." + " mean reward per action " + (this.cumulatedReward/this.numActions) );
-		System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)this.numActions)+")");
 		return action;
 	}
 	
@@ -143,8 +140,8 @@ public class Reactive implements ReactiveBehavior {
 	
 	private void learnValueFunction(double discount) {
 		
-		System.out.println("Learning Value Function...");
-		System.out.println(value);
+		System.out.println("Learning Value Function of agent "+this.myAgent.id()+"...");
+		
 		long reward = 0;
 		double T = 0;
 		double V = 0;
@@ -182,7 +179,7 @@ public class Reactive implements ReactiveBehavior {
 									Q_max = Q;
 							}
 						}
-						else if (a == this.PICKUP) // if picking a task from c for each destination
+						else if (a == this.PICKUP && s == this.STATE_1) // if picking a task from c for each destination
 						{
 							for(City d : this.topology) // for each possible destination
 							{
@@ -253,6 +250,8 @@ public class Reactive implements ReactiveBehavior {
 				expectedReward = intermediateReward;
 				action = new Pickup(availableTask);
 			}
+			else 
+				System.out.println("\n\nDid not pick a task! \n\n");
 		} 
 		
 		this.cumulatedReward += immediateReward;

@@ -1,0 +1,87 @@
+
+	<!-- CONSIDERING A SINGLE AGENT AT A TIME -->
+
+	<config file="reactive.xml" numActions="500">
+
+		<stat rank="1" agent="reactive-99">
+			<cummulated-reward value="1.943186E7"/>
+		</stat>
+
+		<stat rank="1" agent="reactive-rla">
+			<cummulated-reward value="1.9482245E7"/>
+		</stat>
+
+		<stat rank="3" agent="reactive-50">
+			<cummulated-reward value="1.8868106E7"/>
+		</stat>
+
+		<stat rank="4" agent="reactive-10">
+			<cummulated-reward value="1.8680982E7"/>
+		</stat>
+
+		<stat rank="5" agent="reactive-dummy">
+			<cummulated-reward value="1.8038287E7"/>
+		</stat>
+		
+		<stat rank="6" agent="reactive-random">
+			<cummulated-reward value="1.6087194E7"/>
+		</stat>
+
+	</config>
+
+	<config file="reactive2.xml" numActions="500">
+
+		<stat rank="1" agent="reactive-99">
+			<cummulated-reward value="2.1648093E7"/>
+		</stat>
+
+		<stat rank="1" agent="reactive-rla">
+			<cummulated-reward value=""/>
+		</stat>
+
+		<stat rank="3" agent="reactive-50">
+			<cummulated-reward value=""/>
+		</stat>
+
+		<stat rank="4" agent="reactive-10">
+			<cummulated-reward value="2.1622653E7"/>
+		</stat>
+
+		<stat rank="5" agent="reactive-dummy">
+			<cummulated-reward value="2.1664386E7"/>
+		</stat>
+		
+		<stat rank="6" agent="reactive-random">
+			<cummulated-reward value=""/>
+		</stat>
+
+	</config>
+
+
+	<config file="reactiveSwiss.xml" numActions="1000">
+
+		<stat rank="1" agent="reactive-99">
+			<cummulated-reward value="4.7707475E7"/>
+		</stat>
+
+		<stat rank="1" agent="reactive-rla">
+			<cummulated-reward value="4.8377253E7"/>
+		</stat>
+
+		<stat rank="3" agent="reactive-50">
+			<cummulated-reward value="4.8352338E7"/>
+		</stat>
+
+		<stat rank="4" agent="reactive-10">
+			<cummulated-reward value="4.8117217E7"/>
+		</stat>
+
+		<stat rank="5" agent="reactive-dummy">
+			<cummulated-reward value="4.7096493E7"/>
+		</stat>
+		
+		<stat rank="6" agent="reactive-random">
+			<cummulated-reward value="3.7820184E7"/>
+		</stat>
+
+	</config>

@@ -54,9 +54,9 @@ public class OurDummy implements ReactiveBehavior {
 			this.cumulatedReward += this.getReward(availableTask);
 		}
 		
-		if (numActions >= 1) {
-			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
-			System.out.println("perso The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(this.cumulatedReward / (double)numActions)+")");
+		if(numActions >= 1) {
+			System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated reward is "+this.cumulatedReward+" after "+(numActions+1)+" actions" + " (average reward per action : " + (this.cumulatedReward/(this.numActions+1)) );
+			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit per action: "+(myAgent.getTotalProfit() / (double)this.numActions)+")");
 		}
 		numActions++;
 		
