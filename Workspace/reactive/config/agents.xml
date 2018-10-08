@@ -23,10 +23,28 @@
 		<set discount-factor=".99"/>
 	</agent>
 
+	<agent name="reactive-90">
+		<set class-path="bin/"/>
+		<set class-name="template.Reactive"/>
+		<set discount-factor=".90"/>
+	</agent>
+
+	<agent name="reactive-75">
+		<set class-path="bin/"/>
+		<set class-name="template.Reactive"/>
+		<set discount-factor=".75"/>
+	</agent>
+
 	<agent name="reactive-50">
 		<set class-path="bin/"/>
 		<set class-name="template.Reactive"/>
 		<set discount-factor=".5"/>
+	</agent>
+
+	<agent name="reactive-25">
+		<set class-path="bin/"/>
+		<set class-name="template.Reactive"/>
+		<set discount-factor=".25"/>
 	</agent>
 
 	<agent name="reactive-10">
