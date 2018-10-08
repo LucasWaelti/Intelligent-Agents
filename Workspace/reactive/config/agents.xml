@@ -34,5 +34,11 @@
 		<set class-name="template.Reactive"/>
 		<set discount-factor=".1"/>
 	</agent>
+
+	<agent name="reactive-dummy">
+		<set class-path="bin/"/>
+		<set class-name="template.OurDummy"/>
+		<set discount-factor=".85"/>
+	</agent>
 	
 </agents>

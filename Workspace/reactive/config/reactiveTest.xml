@@ -18,7 +18,7 @@
 			the probabilities, rewards and weight of tasks
 		-->
 		<probability distribution="constant" value="0.5" />
-		<reward distribution="constant" value="10" />
+		<reward distribution="constant" value="100" />
 		<weight distribution="constant" value="3" />
 		
 		<!--

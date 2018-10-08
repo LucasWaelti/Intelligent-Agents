@@ -51,6 +51,9 @@ public class Reactive implements ReactiveBehavior {
 		// Initialize the controller
 		buildValueFunction();
 		learnValueFunction(discount);
+		
+		System.out.println(value);
+		
 	}
 
 	@Override
@@ -64,8 +67,8 @@ public class Reactive implements ReactiveBehavior {
 		
 		numActions++;
 		
-		System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated "+this.cumulatedReward+" reward after "+numActions+" actions.");
-		
+		System.out.println("Agent "+myAgent.id()+", vehicle "+vehicle.id()+": cumulated "+this.cumulatedReward+" reward after "+numActions+" actions." + " mean reward per action " + (this.cumulatedReward/this.numActions) );
+		System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)this.numActions)+")");
 		return action;
 	}
 	
@@ -95,7 +98,6 @@ public class Reactive implements ReactiveBehavior {
 			reward = (long) (this.td.probability(from, to) * (this.td.reward(from, to) - cost));
 			break;
 		}
-		
 		return reward;
 	}
 	// Overload: get reward of a given task
@@ -103,9 +105,7 @@ public class Reactive implements ReactiveBehavior {
 		// Get reward when picking a task and moving to target
 		long reward = 0;
 		double cost = task.pickupCity.distanceTo(task.deliveryCity) * getCostPerKm();
-		
 		reward = task.reward - (long) cost;
-		
 		return reward;
 	}
 	
@@ -114,11 +114,12 @@ public class Reactive implements ReactiveBehavior {
 	private double getTransitionProbability(City n, int s_prime) {
 		double proba =  0.0;
 		if (s_prime==STATE_0){
-			proba = this.td.probability(n, null);
+			proba = this.td.probability(n, null); //proba that there is no task in city n
 		}
 		else if(s_prime == STATE_1) {
-			proba = 1-this.td.probability(n, null);
-		}		
+			proba = 1-this.td.probability(n, null); //proba that there is a task in city n
+		}
+		//System.out.println(proba);
 		return proba;
 	}
 	
@@ -143,7 +144,7 @@ public class Reactive implements ReactiveBehavior {
 	private void learnValueFunction(double discount) {
 		
 		System.out.println("Learning Value Function...");
-		
+		System.out.println(value);
 		long reward = 0;
 		double T = 0;
 		double V = 0;
