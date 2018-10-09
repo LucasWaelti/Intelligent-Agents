@@ -149,12 +149,11 @@ public class Reactive implements ReactiveBehavior {
 		double Q = 0;
 		double Q_max = 0;
 		
-		int k = 0;
 		double error = 0;
+		double error_max = 0;
 		
 		do {
-			k = 0;
-			error = 0;
+			error_max = 0;
 			for(City c : this.topology) // for each city
 			{
 				for(int s=0; s<this.NUMSTATE; s++) // for each state
@@ -200,13 +199,13 @@ public class Reactive implements ReactiveBehavior {
 							}
 						}
 					}
-					k += 1;
-					error += this.value.get(c.id).get(s) - Q_max;
+					error = this.value.get(c.id).get(s) - Q_max;
+					if(error_max < Math.abs(error))
+						error_max = Math.abs(error);
 					this.value.get(c.id).set(s, Q_max); // assign value function to current state
 				}
 			}
-			error /= k; // Compute average difference between Q and V (over all states)
-		}while(Math.abs(error) > this.TOLERANCE);
+		}while(error_max > this.TOLERANCE);
 		
 		System.out.println("...Done!");
 	}
