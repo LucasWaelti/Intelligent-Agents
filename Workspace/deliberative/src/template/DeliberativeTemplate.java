@@ -2,6 +2,10 @@ package template;
 
 /* import table */
 import logist.simulation.Vehicle;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import logist.agent.Agent;
 import logist.behavior.DeliberativeBehavior;
 import logist.plan.Plan;
@@ -16,6 +20,49 @@ import logist.topology.Topology.City;
  */
 @SuppressWarnings("unused")
 public class DeliberativeTemplate implements DeliberativeBehavior {
+	
+	class State {
+		// This class represents a node of the state-tree. 
+		private State parent;
+		private ArrayList<State> children;
+		private int numChildren = 0;
+		
+		// Actual state info
+		private City location;
+		private List<City> tasksToPickup;
+		private List<Task> tasksCarried;
+		private int remaining_capacity;
+		
+		double distance = 0;
+		
+		public State(City currentCity, TaskSet tasks) {
+			// Constructor (this is the top node)
+			this.parent = null;
+			this.tasksToPickup = new ArrayList(tasks);
+			this.tasksCarried = null;
+			
+		}
+		public State(State p) {
+			// Constructor specifying parent node
+			this.parent = p;
+			this.distance += p.getDistance();
+		}
+		
+		public ArrayList<State> getChildren(){
+			return this.children;
+		}
+		public void addChild(State child) {
+			this.children.add(child);
+			this.numChildren++;
+		}
+		
+		public double getDistance() {
+			return this.distance;
+		}
+		public void addDistance(double dist) {
+			this.distance += dist;
+		}
+	}
 
 	enum Algorithm { BFS, ASTAR }
 	
