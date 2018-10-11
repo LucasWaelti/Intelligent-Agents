@@ -92,6 +92,8 @@ public class Reactive implements ReactiveBehavior {
 			reward = (long) -cost;
 			break;
 		case PICKUP:
+			// Remove probability because problem is fully observable (adding the probability here
+			// makes it semi-observable)
 			reward = (long) (this.td.probability(from, to) * (this.td.reward(from, to) - cost));
 			break;
 		}
