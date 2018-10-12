@@ -18,34 +18,45 @@ import logist.topology.Topology.City;
 /**
  * An optimal planner for one vehicle.
  */
+
 @SuppressWarnings("unused")
+
 public class DeliberativeTemplate implements DeliberativeBehavior {
+	
+	private final int MOVE 		= 0;
+	private final int PICKUP 	= 1;
+	private final int DELIVER 	= 2;
+	
+	
+	
 	
 	class State {
 		// This class represents a node of the state-tree. 
 		private State parent;
 		private ArrayList<State> children;
-		private int numChildren = 0;
 		
 		// Actual state info
 		private City location;
-		private List<City> tasksToPickup;
+		private List<Task> tasksToPickup;
 		private List<Task> tasksCarried;
 		private int remaining_capacity;
 		
 		double distance = 0;
 		
-		public State(City currentCity, TaskSet tasks) {
-			// Constructor (this is the top node)
-			this.parent = null;
-			this.tasksToPickup = new ArrayList(tasks);
-			this.tasksCarried = null;
-			
-		}
+		
 		public State(State p) {
 			// Constructor specifying parent node
 			this.parent = p;
+			this.children = null;
+			
+			//Directly add distance from previous node
 			this.distance += p.getDistance();
+			
+			// Initialize the different fields
+			this.location = null;
+			this.tasksCarried = null;
+			this.tasksToPickup = null;
+			this.remaining_capacity = 0;
 		}
 		
 		public ArrayList<State> getChildren(){
@@ -53,7 +64,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		public void addChild(State child) {
 			this.children.add(child);
-			this.numChildren++;
 		}
 		
 		public double getDistance() {
@@ -62,8 +72,90 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public void addDistance(double dist) {
 			this.distance += dist;
 		}
+		
+		public void setLocation(City currentCity) {
+			this.location= currentCity;
+		}
+		public City getLocation() {
+			return this.location;
+		}
+		
+		public void setCityTaskToPickup(List<Task> nextCityTasktoPickup) {
+			this.tasksToPickup= nextCityTasktoPickup;
+		}
+		public List<Task> getCityTaskToPickup() {
+			return this.tasksToPickup;
+		}
+		
+		public void setTasksCarried(List<Task> newTasksCarried) {
+			this.tasksCarried= newTasksCarried;
+		}
+		public List<Task> getTasksCarried() {
+			return this.tasksCarried;
+		}
+		
+		private Task taskToDeliverHere(City cityToCheck) {
+			Task taskToLeave = null;
+			for(int t = 0; t<this.tasksCarried.size(); t++) {
+				if(this.tasksCarried.get(t).deliveryCity.id == cityToCheck.id) {
+					taskToLeave =  this.tasksCarried.get(t);
+				}
+			}
+			return taskToLeave;
+				
+		}
+		
+		private Task taskToPickup(City cityToCheck) {
+			
+			Task taskToPickup = null;
+			for(int t = 0; t<this.tasksToPickup.size(); t++) {
+				if(this.tasksToPickup.get(t).deliveryCity.id == cityToCheck.id) {
+					taskToPickup =  this.tasksToPickup.get(t);
+				}
+			}
+			return taskToPickup;
+				
+		}
+		
+		// Return the new state if possible, else return null
+		public State takeAction(int action, City nextCity) {
+			State stateToReturn = null;
+			switch(action) {
+			case MOVE:
+				if (nextCity == null) {
+					System.out.println("Error, if choosing to move, you have to specify next city");
+				}
+				else {
+					this.addChild(new State(this));
+					this.children.get(this.children.size()-1).setLocation(nextCity);
+					this.children.get(this.children.size()-1).setTasksCarried(this.tasksCarried);
+					this.children.get(this.children.size()-1).setCityTaskToPickup(this.tasksToPickup);
+					stateToReturn = this.children.get(this.children.size()-1);
+				}
+			case PICKUP:
+				Task taskToPickup = this.taskToPickup(this.location);
+				
+				if(taskToPickup!=null) {
+					ArrayList<Task> newTasksCarried = new ArrayList<Task>();
+					newTasksCarried.addAll(this.tasksCarried);
+					newTasksCarried.add(taskToPickup);
+					
+					ArrayList<Task> newTasksToPickup = new ArrayList<Task>();
+					newTasksToPickup.addAll(this.tasksToPickup);
+					newTasksToPickup.remove(taskToPickup);
+					
+					this.children.get(this.children.size()-1).setLocation(this.location);
+					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
+					this.children.get(this.children.size()-1).setCityTaskToPickup(newTasksToPickup);
+				}
+					
+				stateToReturn = this.children.get(this.children.size()-1);
+			}
+			
+		}
 	}
-
+	
+	
 	enum Algorithm { BFS, ASTAR }
 	
 	/* Environment */
