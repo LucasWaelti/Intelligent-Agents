@@ -147,11 +147,27 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					this.children.get(this.children.size()-1).setLocation(this.location);
 					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
 					this.children.get(this.children.size()-1).setCityTaskToPickup(newTasksToPickup);
+					stateToReturn = this.children.get(this.children.size()-1);
+
 				}
+			case DELIVER:
+				Task taskToDeliver = this.taskToDeliverHere(this.location);
+				
+				if(taskToDeliver!=null) {
+					ArrayList<Task> newTasksCarried = new ArrayList<Task>();
+					newTasksCarried.addAll(this.tasksCarried);
+					newTasksCarried.remove(taskToDeliver);
 					
-				stateToReturn = this.children.get(this.children.size()-1);
+					ArrayList<Task> newTasksToPickup = new ArrayList<Task>();
+					newTasksToPickup.addAll(this.tasksToPickup);
+					
+					this.children.get(this.children.size()-1).setLocation(this.location);
+					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
+					this.children.get(this.children.size()-1).setCityTaskToPickup(newTasksToPickup);
+					stateToReturn = this.children.get(this.children.size()-1);
+				}
 			}
-			
+			return stateToReturn;
 		}
 	}
 	
