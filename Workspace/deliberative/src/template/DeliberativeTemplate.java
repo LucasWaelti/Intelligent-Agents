@@ -161,6 +161,11 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public State takeAction(int action, City nextCity) {
 			
 			State stateToReturn = null;
+			
+			// Block the creation of children if it is a goal state
+			if(this.finalstate)
+				return stateToReturn;
+			
 			switch(action) {
 			case MOVE:
 				if (nextCity == null) {
@@ -289,12 +294,45 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		tree.addChild(null);
 		
 		// Implement search tree
-		State state = tree; // start on first node
-		// Move to all neighbors 
-		for(City neighbour : state.getLocation().neighbors())
+		ArrayList<State> queue = new ArrayList();
+		ArrayList<State> goalStates = new ArrayList();
+		queue.add(tree);
+		
+		State state = null; // start on first node
+		
+		while(!queue.isEmpty())
 		{
+			// Pop the first state from the queue
+			state = queue.get(0);
+			queue.remove(0);
 			
+			// Build children of current state
+			for(City neighbour : state.getLocation().neighbors())
+				state.takeAction(MOVE, neighbour);
+			state.takeAction(PICKUP, null);
+			state.takeAction(DELIVER, null);
+			
+			// Store final states if existing
+			for(State s : state.getChildren())
+				if(s.finalstate)
+					goalStates.add(s);
+			
+			// Append new states to the end of the queue to implement BFS
+			queue.addAll(state.getChildren()); 
 		}
+		
+		// Extract best found solution
+		double distance = Double.MAX_VALUE;
+		State bestGoal = null;
+		for(State s : goalStates)
+			if(s.getDistance() < distance) {
+				distance = s.getDistance();
+				bestGoal = s;
+			}
+		
+		// Build plan
+		ArrayList<Action> plan = new ArrayList<Action>();
+		//while()
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
