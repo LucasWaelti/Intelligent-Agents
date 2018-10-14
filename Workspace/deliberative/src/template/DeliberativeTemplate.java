@@ -26,12 +26,12 @@ import logist.plan.Action.Delivery;
 
 public class DeliberativeTemplate implements DeliberativeBehavior {
 	
-	private final int MOVE 		= 0;
-	private final int PICKUP 	= 1;
-	private final int DELIVER 	= 2;
+	protected final int MOVE 		= 0;
+	protected final int PICKUP 	= 1;
+	protected final int DELIVER 	= 2;
 	
 		
-	class State {
+	private class State {
 		// This class represents a node of the state-tree. 
 		private State parent;
 		private ArrayList<State> children;
@@ -267,11 +267,34 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		case BFS:
 			// ...
 			plan = naivePlan(vehicle, tasks);
+			planBFS(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
 		}		
 		return plan;
+	}
+	
+	private void planBFS(Vehicle vehicle, TaskSet tasks) {
+		// Initialize first node of the tree
+		State tree = new State(null);
+		tree.setLocation(vehicle.getCurrentCity());
+		List<Task> tasksToPickup = new ArrayList<Task>(tasks);
+		tree.setTasksToPickup(tasksToPickup); // Convert set to list
+		tree.setTasksCarried(null);
+		tree.setRemainingCapacity(vehicle.capacity());
+		tree.finalState(tree);
+		tree.setActionToState(null);
+		tree.setDistance(0);
+		tree.addChild(null);
+		
+		// Implement search tree
+		State state = tree; // start on first node
+		// Move to all neighbors 
+		for(City neighbour : state.getLocation().neighbors())
+		{
+			
+		}
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
