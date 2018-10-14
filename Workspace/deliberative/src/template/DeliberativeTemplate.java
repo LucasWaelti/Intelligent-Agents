@@ -64,10 +64,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			this.actionToState = null;
 		}
 		
-		public String getID() {
-			return this.id;
-		}
-		
 		public State getParent() {
 			return this.parent;
 		}
