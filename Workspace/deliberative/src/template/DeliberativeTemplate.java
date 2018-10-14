@@ -30,7 +30,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	private final int MOVE 		= 0;
 	private final int PICKUP 	= 1;
 	private final int DELIVER 	= 2;
-	
+	private int nbrTasks;
 		
 	class State {
 		// This class represents a node of the state-tree. 
@@ -45,6 +45,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		private int remaining_capacity;
 		private boolean finalState;
 		private Action actionToState; 
+		private String id;
 		
 		double distance = 0;
 		
@@ -140,6 +141,37 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 			return finalState;
 				
+		}
+		
+		private boolean isEqual(State p) {
+			boolean isEqual = false;
+			boolean isInCarried = false;
+			boolean isInPickup = false;
+			if(this.location.id == p.location.id) {
+				if(this.remaining_capacity==p.remaining_capacity) {
+					if(this.tasksCarried.size()==p.tasksCarried.size()) {
+						for(int i=0; i<this.tasksCarried.size();i++) {
+							if(p.tasksCarried.contains(this.tasksCarried.get(i))) {
+								isInCarried = true;
+							}
+						}
+						if(isInCarried){
+							if(this.tasksToPickup.size()==p.tasksToPickup.size()) {
+								for(int i=0; i<this.tasksToPickup.size();i++) {
+									if(p.tasksToPickup.contains(this.tasksToPickup.get(i))) {
+										isInPickup = true;
+									}
+								}
+								if(isInPickup) {
+									isEqual=true;
+								}
+							}
+						}
+					}
+				}
+			}
+			return isEqual;
+			
 		}
 		
 		// Check if there is a task carried by the agent to be delivered in the city
