@@ -335,7 +335,7 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 			queue.remove(0);
 			
 			// Build children of current state
-			for(City neighbour : state.getLocation().neighbors()) 
+			for(City neighbour : state.getLocation().neighbors())
 				state.takeAction(MOVE, neighbour);
 			state.takeAction(PICKUP, null);
 			state.takeAction(DELIVER, null);
