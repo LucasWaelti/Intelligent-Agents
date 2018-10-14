@@ -4,6 +4,7 @@ package template;
 import logist.simulation.Vehicle;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import logist.agent.Agent;
@@ -38,8 +39,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Actual state info
 		private City location;
-		private List<Task> tasksToPickup;
-		private List<Task> tasksCarried;
+		private ArrayList<Task> tasksToPickup;
+		private ArrayList<Task> tasksCarried;
 		private int remaining_capacity;
 		private boolean finalState;
 		private Action actionToState; 
@@ -50,16 +51,20 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public State(State p) {
 			// Constructor specifying parent node
 			this.parent = p;
-			this.children = null;
+			this.children = new ArrayList<State>();
 						
 			// Initialize the different fields
 			this.location = null;
-			this.tasksCarried = null;
-			this.tasksToPickup = null;
+			this.tasksCarried = new ArrayList<Task>();
+			this.tasksToPickup = new ArrayList<Task>();
 			this.remaining_capacity = 0;
 			this.distance = 0;
 			this.finalState = false;
 			this.actionToState = null;
+		}
+		
+		public State getParent() {
+			return this.parent;
 		}
 		
 		public ArrayList<State> getChildren(){
@@ -86,14 +91,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return this.location;
 		}
 		
-		public void setTasksToPickup(List<Task> tasksToPickup) {
+		public void setTasksToPickup(ArrayList<Task> tasksToPickup) {
 			this.tasksToPickup= tasksToPickup;
 		}
 		public List<Task> getTasksToPickup() {
 			return this.tasksToPickup;
 		}
 		
-		public void setTasksCarried(List<Task> newTasksCarried) {
+		public void setTasksCarried(ArrayList<Task> newTasksCarried) {
 			this.tasksCarried= newTasksCarried;
 		}
 		public List<Task> getTasksCarried() {
@@ -152,7 +157,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		private Task taskToPickup(City cityToCheck) {
 			Task taskToPickup = null;
 			for(int t = 0; t<this.tasksToPickup.size(); t++) {
-				if(this.tasksToPickup.get(t).deliveryCity.id == cityToCheck.id && 
+				if(this.tasksToPickup.get(t).pickupCity.id == cityToCheck.id && 
 						this.tasksToPickup.get(t).weight <= this.remaining_capacity) {
 					taskToPickup = this.tasksToPickup.get(t);
 				}
@@ -176,15 +181,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					System.out.println("Error, if choosing to move, you have to specify next city");
 				}
 				else {
-					this.addChild(new State(this));
+					State child = new State(this);
 					
-					this.children.get(this.children.size()-1).setLocation(nextCity);
-					this.children.get(this.children.size()-1).setTasksCarried(this.tasksCarried);
-					this.children.get(this.children.size()-1).setActionToState(new Move(nextCity));
-					this.children.get(this.children.size()-1).setTasksToPickup(this.tasksToPickup);
-					this.children.get(this.children.size()-1).setDistance(this.distance);
-					this.children.get(this.children.size()-1).addDistance(this.location.distanceTo(nextCity));
-					this.children.get(this.children.size()-1).setFinalState(this.finalState(this.children.get(this.children.size()-1)));
+					child.setLocation(nextCity);
+					child.setActionToState(new Move(nextCity));
+					child.setTasksCarried(this.tasksCarried);
+					child.setTasksToPickup(this.tasksToPickup);
+					child.setDistance(this.distance);
+					child.addDistance(this.location.distanceTo(nextCity));
+					child.setRemainingCapacity(this.getRemainingCapacity());
+					child.setFinalState(this.finalState(child));
+					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
 				}
@@ -203,15 +210,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					newTasksToPickup.addAll(this.tasksToPickup);
 					newTasksToPickup.remove(taskToPickup);
 					
-					this.addChild(new State(this));
+					State child = new State(this);
 
-					this.children.get(this.children.size()-1).setLocation(this.location);
-					this.children.get(this.children.size()-1).setActionToState(new Pickup(taskToPickup));
-					this.children.get(this.children.size()-1).addWeight(taskToPickup.weight);
-					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
-					this.children.get(this.children.size()-1).setTasksToPickup(newTasksToPickup);
-					this.children.get(this.children.size()-1).setDistance(this.distance);
-					this.children.get(this.children.size()-1).setFinalState(this.finalState(this.children.get(this.children.size()-1)));
+					child.setLocation(this.location);
+					child.setActionToState(new Pickup(taskToPickup));
+					child.setTasksCarried(newTasksCarried);
+					child.setTasksToPickup(newTasksToPickup);
+					child.setDistance(this.distance);
+					child.setRemainingCapacity(this.getRemainingCapacity());
+					child.addWeight(taskToPickup.weight);
+					child.setFinalState(this.finalState(child));
+					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
 				}
@@ -228,15 +237,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					ArrayList<Task> newTasksToPickup = new ArrayList<Task>();
 					newTasksToPickup.addAll(this.tasksToPickup);
 					
-					this.addChild(new State(this));
+					State child = new State(this);
 
-					this.children.get(this.children.size()-1).setLocation(this.location);
-					this.children.get(this.children.size()-1).setActionToState(new Delivery(taskToDeliver));
-					this.children.get(this.children.size()-1).removeWeight(taskToDeliver.weight);
-					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
-					this.children.get(this.children.size()-1).setTasksToPickup(newTasksToPickup);
-					this.children.get(this.children.size()-1).setDistance(this.distance);
-					this.children.get(this.children.size()-1).setFinalState(this.finalState(this.children.get(this.children.size()-1)));
+					child.setLocation(this.location);
+					child.setActionToState(new Delivery(taskToDeliver));
+					child.setTasksCarried(newTasksCarried);
+					child.setTasksToPickup(newTasksToPickup);
+					child.setDistance(this.distance);
+					child.setRemainingCapacity(this.getRemainingCapacity());
+					child.removeWeight(taskToDeliver.weight);
+					child.setFinalState(this.finalState(child));
+					this.addChild(child);					
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
 				}
@@ -288,7 +299,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			break;
 		case BFS:
 			// ...
-			plan = naivePlan(vehicle, tasks);
+			//plan = naivePlan(vehicle, tasks);
+			plan = planBFS(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
@@ -297,22 +309,21 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	}
 	
 
-	private void planBFS(Vehicle vehicle, TaskSet tasks) {
+private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
+		
+		System.out.println("Planning with BFS...");
+		
 		// Initialize first node of the tree
 		State tree = new State(null);
 		tree.setLocation(vehicle.getCurrentCity());
-		List<Task> tasksToPickup = new ArrayList<Task>(tasks);
-		tree.setTasksToPickup(tasksToPickup); // Convert set to list
-		tree.setTasksCarried(null);
+		ArrayList<Task> tasksToPickup = new ArrayList<Task>(tasks);
+		tree.setTasksToPickup(tasksToPickup); 
 		tree.setRemainingCapacity(vehicle.capacity());
-		tree.finalState(tree);
 		tree.setActionToState(null);
-		tree.setDistance(0);
-		tree.addChild(null);
 		
 		// Implement search tree
-		ArrayList<State> queue = new ArrayList();
-		ArrayList<State> goalStates = new ArrayList();
+		ArrayList<State> queue = new ArrayList<State>();
+		ArrayList<State> goalStates = new ArrayList<State>();
 		queue.add(tree);
 		
 		State state = null; // start on first node
@@ -324,7 +335,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			queue.remove(0);
 			
 			// Build children of current state
-			for(City neighbour : state.getLocation().neighbors())
+			for(City neighbour : state.getLocation().neighbors()) 
 				state.takeAction(MOVE, neighbour);
 			state.takeAction(PICKUP, null);
 			state.takeAction(DELIVER, null);
@@ -333,6 +344,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			for(State s : state.getChildren())
 				if(s.finalState)
 					goalStates.add(s);
+			
+			// DEBUGGING STATEMENT - returns first found goal
+			if(!goalStates.isEmpty())
+				break;
 			
 			// Append new states to the end of the queue to implement BFS
 			queue.addAll(state.getChildren()); 
@@ -349,7 +364,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Build plan
 		ArrayList<Action> plan = new ArrayList<Action>();
-		//while()
+		do {
+			plan.add(bestGoal.getActionToState());
+			bestGoal = bestGoal.getParent();
+		}while(bestGoal.getParent() != null);	
+		Collections.reverse(plan);
+		Plan returnPlan = new Plan(vehicle.getCurrentCity());
+		for(int i=0; i<plan.size(); i++)
+			returnPlan.append(plan.get(i));
+		
+		System.out.println("...Done!");
+		return returnPlan;
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
