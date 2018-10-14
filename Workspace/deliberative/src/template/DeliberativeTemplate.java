@@ -36,7 +36,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		// This class represents a node of the state-tree. 
 		private State parent;
 		private ArrayList<State> children;
-		private String id;
 		
 		// Actual state info
 		private City location;
@@ -45,7 +44,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		private int remaining_capacity;
 		private boolean finalState;
 		private Action actionToState; 
-		private String id;
 		
 		double distance = 0;
 		
@@ -131,6 +129,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			this.finalState = finalState;
 		}
 		
+		
 		//Check if this state is a final state
 		private boolean finalState(State stateToCheck) {
 			boolean finalState;
@@ -144,34 +143,44 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		
 		private boolean isEqual(State p) {
-			boolean isEqual = false;
-			boolean isInCarried = false;
-			boolean isInPickup = false;
 			if(this.location.id == p.location.id) {
 				if(this.remaining_capacity==p.remaining_capacity) {
 					if(this.tasksCarried.size()==p.tasksCarried.size()) {
 						for(int i=0; i<this.tasksCarried.size();i++) {
-							if(p.tasksCarried.contains(this.tasksCarried.get(i))) {
-								isInCarried = true;
-							}
-						}
-						if(isInCarried){
-							if(this.tasksToPickup.size()==p.tasksToPickup.size()) {
-								for(int i=0; i<this.tasksToPickup.size();i++) {
-									if(p.tasksToPickup.contains(this.tasksToPickup.get(i))) {
-										isInPickup = true;
-									}
-								}
-								if(isInPickup) {
-									isEqual=true;
-								}
-							}
-						}
+							if(!p.tasksCarried.contains(this.tasksCarried.get(i))) 
+								return false;
+						}	
 					}
+					if(this.tasksToPickup.size()==p.tasksToPickup.size()) {
+						for(int i=0; i<this.tasksToPickup.size();i++) {
+							if(!p.tasksToPickup.contains(this.tasksToPickup.get(i)))
+								return false;
+						}
+						return true; // Everything was checked at this point
+					}
+					else
+						return false;
 				}
+				else
+					return false;
 			}
-			return isEqual;
+			else
+				return false;
+		}
+		
+		private boolean detectCycle() {
+			State iterator = this.getParent();
 			
+			if(iterator == null)
+				return false;
+			
+			do{
+				if(iterator.isEqual(this))
+					return true;
+				iterator = iterator.getParent();
+			}while(iterator != null);
+			
+			return false;
 		}
 		
 		// Check if there is a task carried by the agent to be delivered in the city
@@ -199,18 +208,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				
 		}
 		
-		private boolean detectCycle() {
-			State iterator = this.getParent();
-			
-			do {
-				if(iterator.isEqual(this))
-					return true;
-				iterator = iterator.getParent();
-			}while(iterator.getParent() != null);
-			
-			return false;
-		}
-		
 		// Return the new state if possible, else return null
 		public State takeAction(int action, City nextCity) {
 			
@@ -236,6 +233,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.addDistance(this.location.distanceTo(nextCity));
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.setFinalState(this.finalState(child));
+					if(child.detectCycle())
+						return stateToReturn;
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
@@ -243,7 +242,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			case PICKUP:
 				Task taskToPickup = this.taskToPickup(this.location);
 				
-				if(taskToPickup!=null) {
+				if(taskToPickup!=null && this.getRemainingCapacity() >= taskToPickup.weight) {
 					//Create new ArrayList to transfer it to the new children
 					//Add the task to pickup to the list of task carried
 					ArrayList<Task> newTasksCarried = new ArrayList<Task>();
@@ -265,6 +264,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.addWeight(taskToPickup.weight);
 					child.setFinalState(this.finalState(child));
+					if(child.detectCycle())
+						return stateToReturn;
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
@@ -292,6 +293,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.removeWeight(taskToDeliver.weight);
 					child.setFinalState(this.finalState(child));
+					if(child.detectCycle())
+						return stateToReturn;
 					this.addChild(child);					
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
