@@ -36,6 +36,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		// This class represents a node of the state-tree. 
 		private State parent;
 		private ArrayList<State> children;
+		private String id;
 		
 		// Actual state info
 		private City location;
@@ -61,6 +62,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			this.distance = 0;
 			this.finalState = false;
 			this.actionToState = null;
+		}
+		
+		public String getID() {
+			return this.id;
 		}
 		
 		public State getParent() {
@@ -164,6 +169,18 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 			return taskToPickup;
 				
+		}
+		
+		private boolean detectCycle() {
+			State iterator = this.getParent();
+			
+			do {
+				if(iterator.isEqual(this))
+					return true;
+				iterator = iterator.getParent();
+			}while(iterator.getParent() != null);
+			
+			return false;
 		}
 		
 		// Return the new state if possible, else return null
