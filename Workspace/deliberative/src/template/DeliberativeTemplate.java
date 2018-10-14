@@ -167,7 +167,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			State stateToReturn = null;
 			
 			// Block the creation of children if it is a goal state
-			if(this.finalstate)
+			if(this.finalState)
 				return stateToReturn;
 			
 			switch(action) {
@@ -331,7 +331,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			
 			// Store final states if existing
 			for(State s : state.getChildren())
-				if(s.finalstate)
+				if(s.finalState)
 					goalStates.add(s);
 			
 			// Append new states to the end of the queue to implement BFS
