@@ -72,21 +72,24 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public double getDistance() {
 			return this.distance;
 		}
+		public void setDistance(double dist) {
+			this.distance = dist;
+		}
 		public void addDistance(double dist) {
 			this.distance += dist;
 		}
 		
 		public void setLocation(City currentCity) {
-			this.location= currentCity;
+			this.location = currentCity;
 		}
 		public City getLocation() {
 			return this.location;
 		}
 		
-		public void setCityTaskToPickup(List<Task> nextCityTasktoPickup) {
-			this.tasksToPickup= nextCityTasktoPickup;
+		public void setTasksToPickup(List<Task> tasksToPickup) {
+			this.tasksToPickup= tasksToPickup;
 		}
-		public List<Task> getCityTaskToPickup() {
+		public List<Task> getTasksToPickup() {
 			return this.tasksToPickup;
 		}
 		
@@ -104,8 +107,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return this.actionToState;
 		}
 		
-		public void initRemainingCapacity(int fullCapacity) {
-			this.remaining_capacity= fullCapacity;
+		public void setRemainingCapacity(int capacity) {
+			this.remaining_capacity= capacity;
 		}
 		public void removeWeight(int weight) {
 			this.remaining_capacity+=weight;
@@ -118,14 +121,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		
 		//Check if this state is a final state
-		private boolean finaleState(State stateToCheck) {
-			boolean finaleState;
+		private boolean finalState(State stateToCheck) {
+			boolean finalState;
 			if (stateToCheck.tasksCarried.isEmpty() && stateToCheck.tasksToPickup.isEmpty()) {
-				finaleState=true;
+				finalState=true;
 			}else {
-				finaleState = false;
+				finalState = false;
 			}
-			return finaleState;
+			return finalState;
 				
 		}
 		
@@ -169,7 +172,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					this.children.get(this.children.size()-1).setLocation(nextCity);
 					this.children.get(this.children.size()-1).setTasksCarried(this.tasksCarried);
 					this.children.get(this.children.size()-1).setActionToState(new Move(nextCity));
-					this.children.get(this.children.size()-1).setCityTaskToPickup(this.tasksToPickup);
+					this.children.get(this.children.size()-1).setTasksToPickup(this.tasksToPickup);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
 			case PICKUP:
@@ -190,7 +193,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					this.children.get(this.children.size()-1).setActionToState(new Pickup(taskToPickup));
 					this.children.get(this.children.size()-1).addWeight(taskToPickup.weight);
 					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
-					this.children.get(this.children.size()-1).setCityTaskToPickup(newTasksToPickup);
+					this.children.get(this.children.size()-1).setTasksToPickup(newTasksToPickup);
 					stateToReturn = this.children.get(this.children.size()-1);
 
 				}
@@ -212,7 +215,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					this.children.get(this.children.size()-1).setActionToState(new Delivery(taskToDeliver));
 					this.children.get(this.children.size()-1).removeWeight(taskToDeliver.weight);
 					this.children.get(this.children.size()-1).setTasksCarried(newTasksCarried);
-					this.children.get(this.children.size()-1).setCityTaskToPickup(newTasksToPickup);
+					this.children.get(this.children.size()-1).setTasksToPickup(newTasksToPickup);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
 			}
