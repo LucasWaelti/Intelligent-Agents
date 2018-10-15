@@ -46,7 +46,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		private Action actionToState; 
 		
 		double distance = 0;
-		
+		double heuristic = 0;
 		
 		public State(State p) {
 			// Constructor specifying parent node
@@ -94,14 +94,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public void setTasksToPickup(ArrayList<Task> tasksToPickup) {
 			this.tasksToPickup= tasksToPickup;
 		}
-		public List<Task> getTasksToPickup() {
+		public ArrayList<Task> getTasksToPickup() {
 			return this.tasksToPickup;
 		}
 		
 		public void setTasksCarried(ArrayList<Task> newTasksCarried) {
 			this.tasksCarried= newTasksCarried;
 		}
-		public List<Task> getTasksCarried() {
+		public ArrayList<Task> getTasksCarried() {
 			return this.tasksCarried;
 		}
 		
@@ -343,7 +343,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		switch (algorithm) {
 		case ASTAR:
 			// ...
-			plan = naivePlan(vehicle, tasks);
+			//plan = naivePlan(vehicle, tasks);
+			plan = planASTAR(vehicle, tasks);
 			break;
 		case BFS:
 			// ...
@@ -393,8 +394,9 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 				if(s.finalState)
 					goalStates.add(s);
 			
-			// DEBUGGING STATEMENT - returns first found goal
-			if(!goalStates.isEmpty())
+			// returns first three found goal 
+			//(works too if statement is removed but takes much longer because whole tree is explored)
+			if(goalStates.size() >=4)
 				break;
 			
 			// Append new states to the end of the queue to implement BFS
@@ -409,6 +411,115 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 				distance = s.getDistance();
 				bestGoal = s;
 			}
+		
+		System.out.println("Optimal distance is "+ bestGoal.getDistance());
+		
+		// Build plan
+		ArrayList<Action> plan = new ArrayList<Action>();
+		do {
+			plan.add(bestGoal.getActionToState());
+			bestGoal = bestGoal.getParent();
+		}while(bestGoal.getParent() != null);	
+		Collections.reverse(plan);
+		Plan returnPlan = new Plan(vehicle.getCurrentCity());
+		for(int i=0; i<plan.size(); i++)
+			returnPlan.append(plan.get(i));
+		
+		System.out.println("...Done!");
+		return returnPlan;
+	}
+
+	private double heuristic(State s) {
+		double heuristic = 0;
+		
+		for(Task t : s.getTasksCarried())
+		{
+			heuristic += s.getLocation().distanceTo(t.deliveryCity);
+		}
+		for(Task t : s.getTasksToPickup())
+		{
+			heuristic += s.getLocation().distanceTo(t.pickupCity);
+		}
+		heuristic /= 1000;
+		heuristic += s.getDistance();
+		
+		return -heuristic;
+	}
+	
+	private void sort(ArrayList<State> list) {
+		// Implementing bubble sort
+		for(int i=1; i<list.size(); i++) // for each element of the list
+		{
+			for(int j=i-1; j>=0; j--) // Let the bubble rise!
+			{
+				list.get(j+1).heuristic = heuristic(list.get(j+1));
+				list.get(j).heuristic = heuristic(list.get(j));
+				if(list.get(j+1).heuristic >= list.get(j).heuristic)
+				{
+					State trans = list.get(j+1);
+					list.remove(j+1);
+					list.add(j,trans);
+				}
+			}
+		}
+	}
+
+	private Plan planASTAR(Vehicle vehicle, TaskSet tasks) {
+		
+		System.out.println("Planning with A*...");
+		
+		// Initialize first node of the tree
+		State tree = new State(null);
+		tree.setLocation(vehicle.getCurrentCity());
+		ArrayList<Task> tasksToPickup = new ArrayList<Task>(tasks);
+		tree.setTasksToPickup(tasksToPickup); 
+		tree.setRemainingCapacity(vehicle.capacity());
+		tree.setActionToState(null);
+		
+		// Implement search tree
+		ArrayList<State> queue = new ArrayList<State>();
+		ArrayList<State> goalStates = new ArrayList<State>();
+		queue.add(tree);
+		
+		State state = null; // start on first node
+		
+		while(!queue.isEmpty())
+		{
+			// Pop the first state from the queue
+			state = queue.get(0);
+			queue.remove(0);
+			
+			// Build children of current state
+			for(City neighbour : state.getLocation().neighbors())
+				state.takeAction(MOVE, neighbour);
+			state.takeAction(PICKUP, null);
+			state.takeAction(DELIVER, null);
+			
+			// Store final states if existing
+			for(State s : state.getChildren())
+				if(s.finalState)
+					goalStates.add(s);
+			
+			// returns first three found goal 
+			//(works too if statement is removed but takes much longer because whole tree is explored)
+			if(goalStates.size() >=4)
+				break;
+			
+			// Append new states to the end of the queue to implement BFS
+			queue.addAll(state.getChildren()); 
+			sort(queue);
+		}
+		
+		// Extract best found solution
+		double distance = Double.MAX_VALUE;
+		State bestGoal = null;
+		for(State s : goalStates)
+			if(s.getDistance() < distance) {
+				distance = s.getDistance();
+				bestGoal = s;
+			}
+		
+		System.out.println("Optimal distance is "+ bestGoal.getDistance());
 		
 		// Build plan
 		ArrayList<Action> plan = new ArrayList<Action>();
