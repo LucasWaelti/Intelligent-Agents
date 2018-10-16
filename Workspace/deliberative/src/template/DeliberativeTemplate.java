@@ -326,7 +326,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.td = td;
 		this.agent = agent;
 		this.meanDistance = this.computeMeanDistance(topology);
-		System.out.println(this.meanDistance);
+		//System.out.println(this.meanDistance);
 		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -334,9 +334,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Throws IllegalArgumentException if algorithm is unknown
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
-		
-		
-		// ...
 	}
 	
 	@Override
@@ -362,9 +359,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	}
 	
 
-private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
+	private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 		
 		System.out.println("Planning with BFS...");
+		long startTime = System.currentTimeMillis();
 		
 		// Initialize first node of the tree
 		State tree = new State(null);
@@ -429,7 +427,8 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 		for(int i=0; i<plan.size(); i++)
 			returnPlan.append(plan.get(i));
 		
-		System.out.println("...Done!");
+		long endTime = System.currentTimeMillis();
+		System.out.println("...Done! (search took "+ (endTime - startTime) +" ms)");
 		return returnPlan;
 	}
 	
@@ -440,37 +439,36 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 			for(City n : c.neighbors()) {
 				nbrConnections++;
 				sumDist += c.distanceTo(n);
-				System.out.println(c.distanceTo(n));
+				//System.out.println(c.distanceTo(n));
 
 			}
 		}
 		return sumDist/nbrConnections;
 	}
 
-
-
-	
 	private double heuristic(State s) {
-		double heuristic = 0;
+		// Estimate of the best path from node n: f(n)
+		double f = 0;
 		
-		// Add cost of node g(n)
-		heuristic += s.getDistance();
+		// Add cost of node n: g(n)
+		f += s.getDistance();
 		
-		// Add future under-estimated cost f(n)
-		ArrayList<Integer> different_cities = new ArrayList<Integer>();
-		// gather all cities where an action has to be taken
-		for(Task t : s.getTasksCarried())
-		{
-			if(!different_cities.contains(t.deliveryCity.id))
-				different_cities.add(t.deliveryCity.id);
+		// Add heuristic of node n: h(n)
+		double max_distance = 0;
+		for(Task t : s.getTasksToPickup()) {
+			double dist = s.getLocation().distanceTo(t.pickupCity);
+			dist += t.pickupCity.distanceTo(t.deliveryCity);
+			if(max_distance < dist)
+				max_distance = dist;
 		}
-		for(Task t : s.getTasksToPickup())
-		{
-			if(!different_cities.contains(t.pickupCity.id))
-				different_cities.add(t.pickupCity.id);
+		for(Task t : s.getTasksCarried()) {
+			double dist = s.getLocation().distanceTo(t.deliveryCity);
+			if(max_distance < dist)
+				max_distance = dist;
 		}
-		heuristic += different_cities.size()*this.meanDistance;
-		return heuristic;
+		f += max_distance;
+		
+		return f;
 	}
 	
 	private void sort(ArrayList<State> list) {
@@ -490,10 +488,19 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 			}
 		}
 	}
+	
+	private void limitSize(ArrayList<State> list, int N) {
+		// Implement beam search
+		while(list.size() > N)
+		{
+			list.remove(list.size()-1);
+		}
+	}
 
 	private Plan planASTAR(Vehicle vehicle, TaskSet tasks) {
 		
 		System.out.println("Planning with A*...");
+		long startTime = System.currentTimeMillis();
 		
 		// Initialize first node of the tree
 		State tree = new State(null);
@@ -535,6 +542,7 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 			// Append new states to the end of the queue to implement BFS
 			queue.addAll(state.getChildren()); 
 			sort(queue);
+			limitSize(queue, 500);
 		}
 		
 		// Extract best found solution
@@ -559,7 +567,8 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 		for(int i=0; i<plan.size(); i++)
 			returnPlan.append(plan.get(i));
 		
-		System.out.println("...Done!");
+		long endTime = System.currentTimeMillis();
+		System.out.println("...Done! (search took "+ (endTime - startTime) +" ms)");
 		return returnPlan;
 	}
 	
