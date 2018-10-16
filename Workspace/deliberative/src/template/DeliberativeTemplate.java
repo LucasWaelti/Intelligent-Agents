@@ -23,7 +23,7 @@ import logist.plan.Action.Delivery;
  * An optimal planner for one vehicle.
  */
 
-@SuppressWarnings("unused")
+//@SuppressWarnings("unused")
 
 public class DeliberativeTemplate implements DeliberativeBehavior {
 	
@@ -32,6 +32,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	private final int DELIVER 	= 2;
 	private int nbrTasks;
 	private double meanDistance;
+
 		
 	class State {
 		// This class represents a node of the state-tree. 
@@ -452,18 +453,24 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 	private double heuristic(State s) {
 		double heuristic = 0;
 		
+		// Add cost of node g(n)
+		heuristic += s.getDistance();
+		
+		// Add future under-estimated cost f(n)
+		ArrayList<Integer> different_cities = new ArrayList<Integer>();
+		// gather all cities where an action has to be taken
 		for(Task t : s.getTasksCarried())
 		{
-			heuristic += s.getLocation().distanceTo(t.deliveryCity);
+			if(!different_cities.contains(t.deliveryCity.id))
+				different_cities.add(t.deliveryCity.id);
 		}
 		for(Task t : s.getTasksToPickup())
 		{
-			heuristic += s.getLocation().distanceTo(t.pickupCity);
+			if(!different_cities.contains(t.pickupCity.id))
+				different_cities.add(t.pickupCity.id);
 		}
-		heuristic /= 1000;
-		heuristic += s.getDistance();
-		
-		return -heuristic;
+		heuristic += different_cities.size()*this.meanDistance;
+		return heuristic;
 	}
 	
 	private void sort(ArrayList<State> list) {
