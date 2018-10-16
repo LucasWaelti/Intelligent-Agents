@@ -237,6 +237,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setFinalState(this.finalState(child));
 					if(child.detectCycle())
 						return stateToReturn;
+					child.heuristic = heuristic(child);
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
@@ -268,6 +269,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setFinalState(this.finalState(child));
 					if(child.detectCycle())
 						return stateToReturn;
+					child.heuristic = heuristic(child);
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
@@ -297,6 +299,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setFinalState(this.finalState(child));
 					if(child.detectCycle())
 						return stateToReturn;
+					child.heuristic = heuristic(child);
 					this.addChild(child);					
 					stateToReturn = this.children.get(this.children.size()-1);
 					break;
@@ -477,8 +480,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		{
 			for(int j=i-1; j>=0; j--) // Let the bubble rise!
 			{
-				list.get(j+1).heuristic = heuristic(list.get(j+1));
-				list.get(j).heuristic = heuristic(list.get(j));
 				if(list.get(j+1).heuristic < list.get(j).heuristic)
 				{
 					State trans = list.get(j+1);
@@ -486,6 +487,31 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					list.add(j,trans);
 				}
 			}
+		}
+	}
+	private void merge(ArrayList<State> M, ArrayList<State> m) {
+		// Both lists must be sorted! Merging M <- m
+		int i = 0; // M iterator
+		int j = 0; // m iterator
+		while(true)
+		{
+			if(M.isEmpty()) {
+				M.addAll(m);
+				break;
+			}
+			// Found a place to merge
+			if(M.get(i).heuristic >= m.get(j).heuristic) {
+				M.add(i,m.get(j)); 
+				if(j < m.size()-1)
+					j++;
+				else
+					break; // m is completely merged
+			}
+			// Check next place
+			else if(i < M.size()-1)
+				i++;
+			else
+				break;
 		}
 	}
 	
@@ -540,8 +566,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				break;
 			
 			// Append new states to the end of the queue to implement BFS
-			queue.addAll(state.getChildren()); 
-			sort(queue);
+			sort(state.getChildren());
+			merge(queue,state.getChildren());
+			//queue.addAll(state.getChildren()); 
+			//sort(queue);
 			limitSize(queue, 500);
 		}
 		
