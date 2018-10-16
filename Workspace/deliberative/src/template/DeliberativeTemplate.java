@@ -499,6 +499,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				M.addAll(m);
 				break;
 			}
+			if(m.isEmpty()) {
+				break;
+			}
 			// Found a place to merge
 			if(M.get(i).heuristic >= m.get(j).heuristic) {
 				M.add(i,m.get(j)); 
