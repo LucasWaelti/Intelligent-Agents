@@ -31,7 +31,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	private final int PICKUP 	= 1;
 	private final int DELIVER 	= 2;
 	private int nbrTasks;
-	private double average_dist = 0;
+	private double meanDistance;
+
 		
 	class State {
 		// This class represents a node of the state-tree. 
@@ -324,6 +325,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
+		this.meanDistance = this.computeMeanDistance(topology);
+		System.out.println(this.meanDistance);
 		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -429,7 +432,24 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 		System.out.println("...Done!");
 		return returnPlan;
 	}
+	
+	private double computeMeanDistance(Topology topology) {
+		double sumDist = 0;
+		int nbrConnections = 0;
+		for(City c : topology.cities()) {
+			for(City n : c.neighbors()) {
+				nbrConnections++;
+				sumDist += c.distanceTo(n);
+				System.out.println(c.distanceTo(n));
 
+			}
+		}
+		return sumDist/nbrConnections;
+	}
+
+
+
+	
 	private double heuristic(State s) {
 		double heuristic = 0;
 		
@@ -449,7 +469,7 @@ private Plan planBFS(Vehicle vehicle, TaskSet tasks) {
 			if(!different_cities.contains(t.pickupCity.id))
 				different_cities.add(t.pickupCity.id);
 		}
-		heuristic += different_cities.size()*this.average_dist;
+		heuristic += different_cities.size()*this.meanDistance;
 		return heuristic;
 	}
 	
