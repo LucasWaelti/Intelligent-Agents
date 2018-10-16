@@ -7,13 +7,13 @@
 	<settings import="config/settings_default.xml" />
 	
 	<!-- load the topology  -->
-	<topology import="config/topology/the_netherlands.xml" />
+	<topology import="config/topology/france.xml" />
 	
 	<!-- load agents -->
 	<agents import="config/agents.xml" />
 	
 	<!-- define task distribution -->
-	<tasks number="3" rngSeed="923456">
+	<tasks number="5" rngSeed="23456">
 		<!--
 			the probabilities, rewards and weight of tasks
 		-->
@@ -29,7 +29,7 @@
 			<!-- the first vehicle (blue) Lausanne -->
 			<vehicle name="Vehicle 1">
 				<set color="#0000ff" />
-				<set home="Amsterdam" />
+				<set home="Paris" />
 				<set speed="90" />
 				<set capacity="30" />
 				<set cost-per-km="5" />
@@ -40,7 +40,7 @@
 			<!-- the second vehicle (red) -->
 			<vehicle name="Vehicle 2">
 				<set color="#ff0000" />
-				<set home="Rotterdam" />
+				<set home="Brest" />
 				<set speed="90" />
 				<set capacity="30" />
 				<set cost-per-km="5" />
@@ -51,45 +51,14 @@
 			<!-- the third vehicle (green) -->
 			<vehicle name="Vehicle 3">
 				<set color="#00ff00" />
-				<set home="Den Haag" />
+				<set home="Strasbourg" />
 				<set speed="90" />
 				<set capacity="30" />
 				<set cost-per-km="5" />
 			</vehicle>
 		</company>
 		
-		<company name="Company D">
-			<!-- the fourth vehicle (yellow) -->
-			<vehicle name="Vehicle 4">
-				<set color="#ffff00" />
-				<set home="Utrecht" />
-				<set speed="90" />
-				<set capacity="30" />
-				<set cost-per-km="5" />
-			</vehicle>
-		</company>
 		
-		<company name="Company E">
-			<!-- the fifth vehicle (magenta) -->
-			<vehicle name="Vehicle 5">
-				<set color="#ff00ff" />
-				<set home="Eindhoven" />
-				<set speed="220" />
-				<set capacity="80" />
-				<set cost-per-km="5" />
-			</vehicle>
-		</company>
-		
-		<company name="Company F">
-			<!-- the sixth vehicle (cyan) -->
-			<vehicle name="Vehicle 6">
-				<set color="#00ffff" />
-				<set home="Almere" />
-				<set speed="220" />
-				<set capacity="80" />
-				<set cost-per-km="5" />
-			</vehicle>
-		</company>
 	</companies>
 	
 </configuration>

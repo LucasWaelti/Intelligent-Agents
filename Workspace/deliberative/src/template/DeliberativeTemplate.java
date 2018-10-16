@@ -240,12 +240,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.heuristic = heuristic(child);
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
-					break;
 				}
+				break;
+
 			case PICKUP:
 				Task taskToPickup = this.taskToPickup(this.location);
 				
-				if(taskToPickup!=null && this.getRemainingCapacity() >= taskToPickup.weight) {
+				if(taskToPickup!=null) {
 					//Create new ArrayList to transfer it to the new children
 					//Add the task to pickup to the list of task carried
 					ArrayList<Task> newTasksCarried = new ArrayList<Task>();
@@ -272,8 +273,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.heuristic = heuristic(child);
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
-					break;
 				}
+				break;
 			case DELIVER:
 				Task taskToDeliver = this.taskToDeliverHere(this.location);
 				
@@ -302,8 +303,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.heuristic = heuristic(child);
 					this.addChild(child);					
 					stateToReturn = this.children.get(this.children.size()-1);
-					break;
 				}
+				break;
 			}
 			return stateToReturn;
 		}

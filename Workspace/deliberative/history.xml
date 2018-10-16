@@ -1,37 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 
-<history configuration="config/deliberative-netherlands.xml">
+<history configuration="config/deliberative-france.xml">
 	<agents>
 		<agent name="deliberative-ASTAR">
 			<vehicle name="Vehicle 1"/>
-		</agent>
-	</agents>
-	<rounds>
-		<round id="1">
-			<tasks>
-				<task id="0" pickup="Apeldoorn" delivery="Almere" weight="3" reward="77731"/>
-				<task id="1" pickup="Groningen" delivery="Eindhoven" weight="3" reward="1117"/>
-			</tasks>
-			<events>
-				<event id="0" time="0" vehicle="Vehicle 1" move="Apeldoorn"/>
-				<event id="1" time="1002222173" vehicle="Vehicle 1" pickup="0"/>
-				<event id="2" time="1302222157" vehicle="Vehicle 1" move="Groningen"/>
-				<event id="3" time="2868888741" vehicle="Vehicle 1" pickup="1"/>
-				<event id="4" time="3168888722" vehicle="Vehicle 1" move="Almere"/>
-				<event id="5" time="4879999741" vehicle="Vehicle 1" deliver="0"/>
-				<event id="6" time="5179999725" vehicle="Vehicle 1" move="Utrecht"/>
-				<event id="7" time="5661110813" vehicle="Vehicle 1" move="Eindhoven"/>
-				<event id="8" time="6682221868" vehicle="Vehicle 1" deliver="1"/>
-			</events>
-		</round>
-	</rounds>
-	<statistics>
-		<stat rank="1" agent="deliberative-ASTAR">
-			<total-tasks value="2"/>
-			<total-distance value="520.4"/>
-			<total-cost value="2602"/>
-			<total-reward value="78848"/>
-			<total-profit value="76246"/>
-		</stat>
-	</statistics>
-</history>
