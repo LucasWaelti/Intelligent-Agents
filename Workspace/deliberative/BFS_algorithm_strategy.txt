@@ -1,0 +1,25 @@
+Q <- n initial
+C <- []						// hashmap<StringID,state>
+bestFinalState <- null
+
+Repeat: 
+	if Q = [] 
+		return
+	else
+		n <- pop(Q)
+
+		if n is best final state 
+			bestFinalState <- n
+			continue
+
+		if n !in C 				(n was never seen before)
+			C <-add n
+			S <- successors(n)
+			Q <- appendAtEnd(S)
+		elif n in C
+			if hashmap.get(nID).getDistance() > n.getDistance() 	// We find a better solution for this state
+
+				hashmap.get(nID).getParent.removeChild(hashmap.get(nID))
+				hashmap.get(nID).setParent(n.parent)// Rearrange state tree
+				hashmap.set(nID,n) 					// update hashmap
+
