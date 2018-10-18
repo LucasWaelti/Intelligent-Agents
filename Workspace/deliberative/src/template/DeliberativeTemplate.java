@@ -419,15 +419,23 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		// Initialize best Hashmap linking a state and the distance to reach it. 
 		// Used to check if a state has already been visited
         HashMap<String, State> C = new HashMap<String, State>(); 
-		
-		
-		// Initialize first node of the tree
+        
+        // Initialize first node of the tree
 		State tree = new State(null);
 		tree.setLocation(vehicle.getCurrentCity());
 		ArrayList<Task> tasksToPickup = new ArrayList<Task>(tasks);
 		tree.setTasksToPickup(tasksToPickup); 
 		tree.setRemainingCapacity(vehicle.capacity());
 		tree.setActionToState(null);
+
+		if (!vehicle.getCurrentTasks().isEmpty()) {
+			ArrayList<Task> tasksCarried = new ArrayList<Task>(tasks);
+			tree.setTasksCarried(tasksCarried);
+			for(Task t : tasksCarried) {
+				tree.addWeight(t.weight);
+			}
+		}
+		
 		
 		// Implement search tree
 		ArrayList<State> queue = new ArrayList<State>();
@@ -631,6 +639,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		tree.setTasksToPickup(tasksToPickup); 
 		tree.setRemainingCapacity(vehicle.capacity());
 		tree.setActionToState(null);
+		
+		if (!vehicle.getCurrentTasks().isEmpty()) {
+			ArrayList<Task> tasksCarried = new ArrayList<Task>(tasks);
+			tree.setTasksCarried(tasksCarried);
+			for(Task t : tasksCarried) {
+				tree.addWeight(t.weight);
+			}
+		}
 		
 		// Implement search tree
 		ArrayList<State> queue = new ArrayList<State>();
