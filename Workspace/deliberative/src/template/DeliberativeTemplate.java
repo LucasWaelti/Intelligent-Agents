@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.HashMap; 
 import java.util.Map; 
 
+
 import logist.agent.Agent;
 import logist.behavior.DeliberativeBehavior;
 import logist.plan.Plan;
@@ -32,7 +33,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	private final int MOVE 		= 0;
 	private final int PICKUP 	= 1;
 	private final int DELIVER 	= 2;
-	private int nbrTasks;
+	private int numTasks;
 	private double meanDistance;
 
 		
@@ -52,6 +53,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		double distance = 0;
 		double heuristic = 0;
 		
+		private String ID;
+		
 		public State(State p) {
 			// Constructor specifying parent node
 			this.parent = p;
@@ -70,7 +73,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public State getParent() {
 			return this.parent;
 		}
-		
+				
 		public ArrayList<State> getChildren(){
 			return this.children;
 		}
@@ -154,22 +157,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 							if(!p.tasksCarried.contains(this.tasksCarried.get(i))) 
 								return false;
 						}	
-					}
-					if(this.tasksToPickup.size()==p.tasksToPickup.size()) {
-						for(int i=0; i<this.tasksToPickup.size();i++) {
-							if(!p.tasksToPickup.contains(this.tasksToPickup.get(i)))
-								return false;
+						if(this.tasksToPickup.size()==p.tasksToPickup.size()) {
+							for(int i=0; i<this.tasksToPickup.size();i++) {
+								if(!p.tasksToPickup.contains(this.tasksToPickup.get(i)))
+									return false;
+							}
+							return true; // Everything was checked at this point
 						}
-						return true; // Everything was checked at this point
 					}
-					else
-						return false;
 				}
-				else
-					return false;
 			}
-			else
-				return false;
+			return false;
 		}
 		
 		private boolean detectCycle() {
@@ -250,6 +248,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					if(child.detectCycle())
 						return stateToReturn;
 					child.heuristic = heuristic(child);
+					child.produceStateID();
+					System.out.println(child.getStateID());
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
@@ -283,6 +283,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					if(child.detectCycle())
 						return stateToReturn;
 					child.heuristic = heuristic(child);
+					child.produceStateID();
+					System.out.println(child.getStateID());
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
@@ -313,12 +315,46 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					if(child.detectCycle())
 						return stateToReturn;
 					child.heuristic = heuristic(child);
+					child.produceStateID();
+					System.out.println(child.getStateID());
 					this.addChild(child);					
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
 				break;
 			}
 			return stateToReturn;
+		}
+	
+		public void produceStateID() {
+			
+			String stateID = "";
+			
+			// Add city location
+			stateID += Integer.toString(this.getLocation().id);
+			
+			// Add task lists to ID
+			ArrayList<Integer> listPickup = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
+			ArrayList<Integer> listCarried = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
+			for(Task t : this.tasksToPickup) {
+				listPickup.set(t.id, 1);
+			}
+			for(Task t : this.tasksCarried) {
+				listCarried.set(t.id, 1);
+			}
+			for(int i=0; i<numTasks; i++) {
+				stateID += Integer.toString(listPickup.get(i));
+			}
+			for(int i=0; i<numTasks; i++) {
+				stateID += Integer.toString(listCarried.get(i));
+			}
+			
+			// Add remaining capacity
+			stateID += Integer.toString(this.remaining_capacity);
+			
+			this.ID = stateID;
+		}
+		public String getStateID() {
+			return this.ID;
 		}
 	}
 	
@@ -342,7 +378,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.td = td;
 		this.agent = agent;
 		this.meanDistance = this.computeMeanDistance(topology);
-		//System.out.println(this.meanDistance);
 		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -355,6 +390,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
+		this.numTasks = tasks.size();
 
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
@@ -405,6 +441,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		while(!queue.isEmpty())
 		{
+			//System.out.println(queue.size());
 			// Pop the first state from the queue
 			state = queue.get(0);
 			queue.remove(0);
@@ -448,8 +485,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			/*
 			// returns first three found goal 
 			//(works too if statement is removed but takes much longer because whole tree is explored)
-			if(goalStates.size() >=4)
-				break;
 			*/
 			
 		}
