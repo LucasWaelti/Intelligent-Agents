@@ -72,6 +72,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public State getParent() {
 			return this.parent;
 		}
+		public void setParent(State p) {
+			this.parent = p;
+		}
 		
 		public ArrayList<State> getChildren(){
 			return this.children;
@@ -238,7 +241,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 						return stateToReturn;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
-					System.out.println(child.getStateID());
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
@@ -273,7 +275,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 						return stateToReturn;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
-					System.out.println(child.getStateID());
 					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
@@ -305,8 +306,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 						return stateToReturn;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
-					System.out.println(child.getStateID());
-					this.addChild(child);					
+					this.addChild(child);
 					stateToReturn = this.children.get(this.children.size()-1);
 				}
 				break;
