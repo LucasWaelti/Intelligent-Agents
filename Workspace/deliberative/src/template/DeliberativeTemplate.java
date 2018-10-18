@@ -6,8 +6,9 @@ import logist.simulation.Vehicle;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashMap; 
+import java.util.Map; 
+
 
 import logist.agent.Agent;
 import logist.behavior.DeliberativeBehavior;
@@ -75,7 +76,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		public void setParent(State p) {
 			this.parent = p;
 		}
-		
+
 		public ArrayList<State> getChildren(){
 			return this.children;
 		}
@@ -186,6 +187,16 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			
 			return false;
 		}
+		
+		public void removeChild(State childToRemove) {
+			if (childToRemove == null || !this.children.contains(childToRemove)) {
+				System.out.println("Error, if calling removeChild a valid child should be given");
+			}
+			else{
+				this.children.remove(childToRemove);
+			}
+		}
+		
 		
 		// Check if there is a task carried by the agent to be delivered in the city
 		private Task taskToDeliverHere(City cityToCheck) {
@@ -405,6 +416,11 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		System.out.println("Planning with BFS...");
 		long startTime = System.currentTimeMillis();
 		
+		// Initialize best Hashmap linking a state and the distance to reach it. 
+		// Used to check if a state has already been visited
+        HashMap<String, State> C = new HashMap<>(); 
+		
+		
 		// Initialize first node of the tree
 		State tree = new State(null);
 		tree.setLocation(vehicle.getCurrentCity());
@@ -420,6 +436,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		State state = null; // start on first node
 		
+		State bestFinalState = null; // Store the best final state
+		
+		
 		while(!queue.isEmpty())
 		{
 			//System.out.println(queue.size());
@@ -427,24 +446,47 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			state = queue.get(0);
 			queue.remove(0);
 			
-			// Build children of current state
-			for(City neighbour : state.getLocation().neighbors())
-				state.takeAction(MOVE, neighbour);
-			state.takeAction(PICKUP, null);
-			state.takeAction(DELIVER, null);
+			if(state.finalState) {
+				if (bestFinalState!=null) {
+					if(bestFinalState.distance>state.distance)
+						bestFinalState=state;
+				}				
+				else {
+					bestFinalState = state;
+				}
+				goalStates.add(state); //keeping it for debugging purpose. We don't need it since we keep directly the best final state
+				continue;
+			}
 			
-			// Store final states if existing
-			for(State s : state.getChildren())
-				if(s.finalState)
-					goalStates.add(s);
+			if(!C.containsKey(state.getStateID())) {
+				C.put(state.getStateID(), state);
+				
+				// Build children of current state
+				for(City neighbour : state.getLocation().neighbors())
+					state.takeAction(MOVE, neighbour);
+				state.takeAction(PICKUP, null);
+				state.takeAction(DELIVER, null);
+				
+				// Append new states to the end of the queue to implement BFS
+				queue.addAll(state.getChildren()); 
+				
+			}else {
+				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
+					
+					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
+					C.get(state.getStateID()).setActionToState(state.actionToState);
+					C.get(state.getStateID()).setParent(state.parent);
+					C.get(state.getStateID()).setDistance(state.distance);
+					C.put(state.getStateID(), state);
+					
+				}
+			}
 			
+			/*
 			// returns first three found goal 
 			//(works too if statement is removed but takes much longer because whole tree is explored)
-			//if(goalStates.size() >=4)
-				//break;
+			*/
 			
-			// Append new states to the end of the queue to implement BFS
-			queue.addAll(state.getChildren()); 
 		}
 		
 		// Extract best found solution
