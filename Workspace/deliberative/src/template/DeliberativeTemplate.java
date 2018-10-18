@@ -574,6 +574,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		// Both lists must be sorted! Merging M <- m
 		int i = 0; // M iterator
 		int j = 0; // m iterator
+		int sizeM = M.size();
+		int sizem = m.size();
 		while(true)
 		{
 			if(M.isEmpty()) {
@@ -586,16 +588,21 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			// Found a place to merge
 			if(M.get(i).heuristic >= m.get(j).heuristic) {
 				M.add(i,m.get(j)); 
-				if(j < m.size()-1)
+				if(j < sizem-1) // consider next child
 					j++;
 				else
 					break; // m is completely merged
 			}
 			// Check next place
-			else if(i < M.size()-1)
+			else if(i < sizeM-1)
 				i++;
-			else
+			else {
+				if(!m.isEmpty()) { // Last children must still me added. 
+					for(int k=j; k<sizem-1; k++)
+						M.add(m.get(k));
+				}
 				break;
+			}
 		}
 	}
 	
@@ -609,7 +616,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	private Plan planASTAR(Vehicle vehicle, TaskSet tasks) {
 		
-		System.out.println("Planning with BFS...");
+		System.out.println("Planning with A*...");
 		long startTime = System.currentTimeMillis();
 		
 		// Initialize best Hashmap linking a state and the distance to reach it. 
@@ -631,8 +638,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		queue.add(tree);
 		
 		State state = null; // start on first node
-		
-		State bestFinalState = null; // Store the best final state
 		
 		
 		while(!queue.isEmpty())
