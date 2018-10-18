@@ -418,7 +418,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Initialize best Hashmap linking a state and the distance to reach it. 
 		// Used to check if a state has already been visited
-        HashMap<String, State> C = new HashMap<>(); 
+        HashMap<String, State> C = new HashMap<String, State>(); 
 		
 		
 		// Initialize first node of the tree
@@ -609,8 +609,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	private Plan planASTAR(Vehicle vehicle, TaskSet tasks) {
 		
-		System.out.println("Planning with A*...");
+		System.out.println("Planning with BFS...");
 		long startTime = System.currentTimeMillis();
+		
+		// Initialize best Hashmap linking a state and the distance to reach it. 
+		// Used to check if a state has already been visited
+        HashMap<String, State> C = new HashMap<String, State>(); 
+		
 		
 		// Initialize first node of the tree
 		State tree = new State(null);
@@ -627,34 +632,44 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		State state = null; // start on first node
 		
+		State bestFinalState = null; // Store the best final state
+		
+		
 		while(!queue.isEmpty())
 		{
+			//System.out.println(queue.size());
 			// Pop the first state from the queue
 			state = queue.get(0);
 			queue.remove(0);
 			
-			// Build children of current state
-			for(City neighbour : state.getLocation().neighbors())
-				state.takeAction(MOVE, neighbour);
-			state.takeAction(PICKUP, null);
-			state.takeAction(DELIVER, null);
-			
-			// Store final states if existing
-			for(State s : state.getChildren())
-				if(s.finalState)
-					goalStates.add(s);
-			
-			// returns first three found goal 
-			//(works too if statement is removed but takes much longer because whole tree is explored)
-			if(goalStates.size() >=4)
+			if(state.finalState) {
+				goalStates.add(state); 
 				break;
+			}
 			
-			// Append new states to the end of the queue to implement BFS
-			sort(state.getChildren());
-			merge(queue,state.getChildren());
-			//queue.addAll(state.getChildren()); 
-			//sort(queue);
-			limitSize(queue, 500);
+			if(!C.containsKey(state.getStateID())) {
+				C.put(state.getStateID(), state);
+				
+				// Build children of current state
+				for(City neighbour : state.getLocation().neighbors())
+					state.takeAction(MOVE, neighbour);
+				state.takeAction(PICKUP, null);
+				state.takeAction(DELIVER, null);
+				
+				// Merge newly created states to queue accordingly to heuristic
+				sort(state.getChildren());
+				merge(queue,state.getChildren());
+				
+			}else {
+				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
+					
+					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
+					C.get(state.getStateID()).setActionToState(state.actionToState);
+					C.get(state.getStateID()).setParent(state.parent);
+					C.get(state.getStateID()).setDistance(state.distance);
+					C.put(state.getStateID(), state);
+				}
+			}
 		}
 		
 		// Extract best found solution
