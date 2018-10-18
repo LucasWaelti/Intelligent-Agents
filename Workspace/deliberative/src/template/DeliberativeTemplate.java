@@ -320,11 +320,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 			return stateToReturn;
 		}
-
-		public String getStateID() {
-			// TODO Auto-generated method stub
-			return null;
-		}
 	}
 	
 	
@@ -387,7 +382,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Initialize best Hashmap linking a state and the distance to reach it. 
 		// Used to check if a state has already been visited
-        HashMap<String, State> map = new HashMap<>(); 
+        HashMap<String, State> C = new HashMap<>(); 
 		
 		
 		// Initialize first node of the tree
@@ -404,6 +399,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		queue.add(tree);
 		
 		State state = null; // start on first node
+		
 		State bestFinalState = null; // Store the best final state
 		
 		
@@ -425,8 +421,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				continue;
 			}
 			
-			if(!map.containsKey(state.getStateID())) {
-				map.put(state.getStateID(), state);
+			if(!C.containsKey(state.getStateID())) {
+				C.put(state.getStateID(), state);
 				
 				// Build children of current state
 				for(City neighbour : state.getLocation().neighbors())
@@ -438,8 +434,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				queue.addAll(state.getChildren()); 
 				
 			}else {
-				if(map.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
-					map.get(state.getStateID()).getParent().removeChild(map.get(state.getStateID()));
+				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
+					
+					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
+					C.get(state.getStateID()).setActionToState(state.actionToState);
+					C.get(state.getStateID()).setParent(state.parent);
+					C.get(state.getStateID()).setDistance(state.distance);
+					C.put(state.getStateID(), state);
+					
 				}
 			}
 			
