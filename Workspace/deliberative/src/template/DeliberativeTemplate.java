@@ -325,8 +325,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return stateToReturn;
 		}
 	
-		public void produceStateID() {
-			
+		public void deprecated_produceStateID() {
+			// We can generate an ID creation that does not rely on the number of tasks
 			String stateID = "";
 			
 			// Add city location
@@ -335,6 +335,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			// Add task lists to ID
 			ArrayList<Integer> listPickup = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
 			ArrayList<Integer> listCarried = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
+			
 			for(Task t : this.tasksToPickup) {
 				listPickup.set(t.id, 1);
 			}
@@ -353,13 +354,57 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			
 			this.ID = stateID;
 		}
+		private void sortTasksByID(ArrayList<Task> tasks) {
+			for(int i=1; i<tasks.size(); i++) // for each task of the list
+			{
+				for(int j=i-1; j>=0; j--) // Let the bubble rise!
+				{
+					if(tasks.get(j+1).id < tasks.get(j).id)
+					{
+						Task trans = tasks.get(j+1);
+						tasks.remove(j+1);
+						tasks.add(j,trans);
+					}
+				}
+			}
+		}
+		public void produceStateID() {
+			
+			String stateID = "";
+			
+			// Add city location
+			stateID += "Loc:";
+			stateID += Integer.toString(this.getLocation().id);
+			
+			// Add task lists to ID
+			this.sortTasksByID(this.tasksToPickup);
+			this.sortTasksByID(this.tasksCarried);
+			
+			stateID += "ToPickup:";
+			for(int i=0; i<this.tasksToPickup.size(); i++) {
+				stateID += Integer.toString(this.tasksToPickup.get(i).id);
+				stateID += "-";
+			}
+			stateID += "ToDeliver:";
+			for(int i=0; i<this.tasksCarried.size(); i++) {
+				stateID += Integer.toString(this.tasksCarried.get(i).id);
+				stateID += "-";
+			}
+			
+			// Add remaining capacity
+			stateID += "Cap:";
+			stateID += Integer.toString(this.remaining_capacity);
+			
+			this.ID = stateID;
+		}
 		public String getStateID() {
 			return this.ID;
 		}
+		
 	}
 	
 	
-	enum Algorithm { BFS, ASTAR }
+	enum Algorithm { BFS, ASTAR, RANDOM }
 	
 	/* Environment */
 	Topology topology;
@@ -379,19 +424,36 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.agent = agent;
 		this.meanDistance = this.computeMeanDistance(topology);
 		
-		// initialize the planner
-		int capacity = agent.vehicles().get(0).capacity();
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
 		
 		// Throws IllegalArgumentException if algorithm is unknown
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
 	}
 	
+	private int getHighestTaskIndex(TaskSet tasks) {
+		ArrayList<Task> tasksToPickup = new ArrayList<Task>(tasks);
+		
+		int index = 0;
+		for(Task t : tasksToPickup) {
+			if(index < t.id+1)
+				index = t.id+1;
+		}
+		return index;
+	}
+	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
+		
 		Plan plan;
-		this.numTasks = tasks.size();
-
+		if(vehicle.getCurrentTasks().isEmpty())
+			this.numTasks = tasks.size();
+		else {
+			this.numTasks = tasks.size();
+			this.numTasks += vehicle.getCurrentTasks().size();
+		}
+		if(this.numTasks < getHighestTaskIndex(tasks))
+			this.numTasks = getHighestTaskIndex(tasks);
+		
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
@@ -404,9 +466,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			//plan = naivePlan(vehicle, tasks);
 			plan = planBFS(vehicle, tasks);
 			break;
+		case RANDOM:
+			plan = naivePlan(vehicle, tasks);
+			break;
 		default:
 			throw new AssertionError("Should not happen.");
-		}		
+		}	
+		
 		return plan;
 	}
 	
@@ -427,9 +493,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		tree.setTasksToPickup(tasksToPickup); 
 		tree.setRemainingCapacity(vehicle.capacity());
 		tree.setActionToState(null);
+		tree.produceStateID();
 
 		if (!vehicle.getCurrentTasks().isEmpty()) {
-			ArrayList<Task> tasksCarried = new ArrayList<Task>(tasks);
+			ArrayList<Task> tasksCarried = new ArrayList<Task>(vehicle.getCurrentTasks());
 			tree.setTasksCarried(tasksCarried);
 			for(Task t : tasksCarried) {
 				tree.addWeight(t.weight);
@@ -482,11 +549,18 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
 					
 					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
-					C.get(state.getStateID()).setActionToState(state.actionToState);
-					C.get(state.getStateID()).setParent(state.parent);
-					C.get(state.getStateID()).setDistance(state.distance);
+					//C.get(state.getStateID()).setActionToState(state.actionToState);
+					//C.get(state.getStateID()).setParent(state.parent);
+					//C.get(state.getStateID()).setDistance(state.distance);
 					C.put(state.getStateID(), state);
 					
+					for(City neighbour : state.getLocation().neighbors())
+						state.takeAction(MOVE, neighbour);
+					state.takeAction(PICKUP, null);
+					state.takeAction(DELIVER, null);
+					
+					// Merge newly created states to queue accordingly to heuristic
+					queue.addAll(state.getChildren()); 
 				}
 			}
 			
@@ -639,9 +713,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		tree.setTasksToPickup(tasksToPickup); 
 		tree.setRemainingCapacity(vehicle.capacity());
 		tree.setActionToState(null);
+		tree.produceStateID();
 		
 		if (!vehicle.getCurrentTasks().isEmpty()) {
-			ArrayList<Task> tasksCarried = new ArrayList<Task>(tasks);
+			ArrayList<Task> tasksCarried = new ArrayList<Task>(vehicle.getCurrentTasks());
 			tree.setTasksCarried(tasksCarried);
 			for(Task t : tasksCarried) {
 				tree.addWeight(t.weight);
@@ -682,13 +757,32 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				merge(queue,state.getChildren());
 				
 			}else {
-				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
+				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { 
+					//We find a better solution for this state
+					// Remove unwanted children from queue
+					for(State s : C.get(state.getStateID()).getChildren()) {
+						if(!queue.remove(s))
+							System.out.println("Warning: A* tried to remove an unexisting state from the queue.");
+						else
+							System.out.println("Removed old state from queue.");
+					}
 					
+					// Update the tree
 					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
-					C.get(state.getStateID()).setActionToState(state.actionToState);
-					C.get(state.getStateID()).setParent(state.parent);
-					C.get(state.getStateID()).setDistance(state.distance);
+					//C.get(state.getStateID()).setActionToState(state.actionToState);
+					//C.get(state.getStateID()).setParent(state.parent);
+					//C.get(state.getStateID()).setDistance(state.distance);
 					C.put(state.getStateID(), state);
+					
+					// Explore again child nodes
+					for(City neighbour : state.getLocation().neighbors())
+						state.takeAction(MOVE, neighbour);
+					state.takeAction(PICKUP, null);
+					state.takeAction(DELIVER, null);
+					
+					// Merge newly created states to queue accordingly to heuristic
+					sort(state.getChildren());
+					merge(queue,state.getChildren());
 				}
 			}
 		}
