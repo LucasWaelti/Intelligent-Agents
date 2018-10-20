@@ -224,7 +224,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				
 		}
 		
-		
 		public State takeAction(int action, City nextCity) {
 			// Return the new state after taking the specified action if possible, 
 			// else return null if the action is impossible. 
@@ -712,9 +711,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					// Remove unwanted children from queue
 					for(State s : C.get(state.getStateID()).getChildren()) {
 						if(!queue.remove(s))
-							System.out.println("Warning: A* tried to remove an unexisting state from the queue.");
+							System.out.println("Info: A* tried to remove an unexisting state from the queue.");
 						else
-							System.out.println("Removed old state from queue.");
+							System.out.println("Info: A* removed old state from queue.");
 					}
 					
 					// Update the tree
