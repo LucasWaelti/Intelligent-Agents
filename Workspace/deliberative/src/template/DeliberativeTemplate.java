@@ -5,9 +5,7 @@ import logist.simulation.Vehicle;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.HashMap; 
-import java.util.Map; 
 
 
 import logist.agent.Agent;
@@ -33,8 +31,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	private final int MOVE 		= 0;
 	private final int PICKUP 	= 1;
 	private final int DELIVER 	= 2;
-	private int numTasks;
-	private double meanDistance;
 
 		
 	class State {
@@ -82,6 +78,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		public void addChild(State child) {
 			this.children.add(child);
+		}
+		public void removeChild(State childToRemove) {
+			if (childToRemove == null || !this.children.contains(childToRemove)) {
+				System.out.println("Error, if calling removeChild a valid child should be given");
+			}
+			else{
+				this.children.remove(childToRemove);
+			}
 		}
 		
 		public double getDistance() {
@@ -140,8 +144,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		
 		
-		//Check if this state is a final state
 		private boolean finalState(State stateToCheck) {
+			//Check if this state is a final state
 			boolean finalState;
 			if (stateToCheck.tasksCarried.isEmpty() && stateToCheck.tasksToPickup.isEmpty()) {
 				finalState=true;
@@ -172,8 +176,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 			return false;
 		}
-		
-		private boolean detectCycle() {
+		private boolean detectImmediateCycle() {
+			// Detect if a parent was already a similar state.
+			// This helps avoiding going back and forth between two cities.
+			// Redundant states are therefore not added to the queue. 
 			State iterator = this.getParent();
 			
 			if(iterator == null)
@@ -188,18 +194,12 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return false;
 		}
 		
-		public void removeChild(State childToRemove) {
-			if (childToRemove == null || !this.children.contains(childToRemove)) {
-				System.out.println("Error, if calling removeChild a valid child should be given");
-			}
-			else{
-				this.children.remove(childToRemove);
-			}
-		}
 		
 		
-		// Check if there is a task carried by the agent to be delivered in the city
+		
+		
 		private Task taskToDeliverHere(City cityToCheck) {
+			// Check if there is a task carried by the agent to be delivered in the city
 			Task taskToLeave = null;
 			for(int t = 0; t<this.tasksCarried.size(); t++) {
 				if(this.tasksCarried.get(t).deliveryCity.id == cityToCheck.id) {
@@ -209,9 +209,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return taskToLeave;
 		}
 		
-		// Check if there is a task to pickup in this city and if the vehicle has enough space left to carry it.
-		// It return the task Picked up or null.
+		
 		private Task taskToPickup(City cityToCheck) {
+			// Check if there is a task to pickup in this city and if the vehicle has enough space left to carry it.
+			// It return the task Picked up or null.
 			Task taskToPickup = null;
 			for(int t = 0; t<this.tasksToPickup.size(); t++) {
 				if(this.tasksToPickup.get(t).pickupCity.id == cityToCheck.id && 
@@ -223,9 +224,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				
 		}
 		
-		// Return the new state if possible, else return null
+		
 		public State takeAction(int action, City nextCity) {
-			
+			// Return the new state after taking the specified action if possible, 
+			// else return null if the action is impossible. 
 			State stateToReturn = null;
 			
 			// Block the creation of children if it is a goal state
@@ -248,8 +250,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.addDistance(this.location.distanceTo(nextCity));
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.setFinalState(this.finalState(child));
-					if(child.detectCycle())
-						return stateToReturn;
+					if(child.detectImmediateCycle())
+						return null;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
 					this.addChild(child);
@@ -282,8 +284,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.addWeight(taskToPickup.weight);
 					child.setFinalState(this.finalState(child));
-					if(child.detectCycle())
-						return stateToReturn;
+					if(child.detectImmediateCycle())
+						return null;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
 					this.addChild(child);
@@ -313,8 +315,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					child.setRemainingCapacity(this.getRemainingCapacity());
 					child.removeWeight(taskToDeliver.weight);
 					child.setFinalState(this.finalState(child));
-					if(child.detectCycle())
-						return stateToReturn;
+					if(child.detectImmediateCycle())
+						return null;
 					child.heuristic = heuristic(child);
 					child.produceStateID();
 					this.addChild(child);
@@ -325,36 +327,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			return stateToReturn;
 		}
 	
-		public void deprecated_produceStateID() {
-			// We can generate an ID creation that does not rely on the number of tasks
-			String stateID = "";
-			
-			// Add city location
-			stateID += Integer.toString(this.getLocation().id);
-			
-			// Add task lists to ID
-			ArrayList<Integer> listPickup = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
-			ArrayList<Integer> listCarried = new ArrayList<Integer>(Collections.nCopies(numTasks, 0));
-			
-			for(Task t : this.tasksToPickup) {
-				listPickup.set(t.id, 1);
-			}
-			for(Task t : this.tasksCarried) {
-				listCarried.set(t.id, 1);
-			}
-			for(int i=0; i<numTasks; i++) {
-				stateID += Integer.toString(listPickup.get(i));
-			}
-			for(int i=0; i<numTasks; i++) {
-				stateID += Integer.toString(listCarried.get(i));
-			}
-			
-			// Add remaining capacity
-			stateID += Integer.toString(this.remaining_capacity);
-			
-			this.ID = stateID;
-		}
 		private void sortTasksByID(ArrayList<Task> tasks) {
+			// Required to produce comparable IDs between states. 
 			for(int i=1; i<tasks.size(); i++) // for each task of the list
 			{
 				for(int j=i-1; j>=0; j--) // Let the bubble rise!
@@ -422,7 +396,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
-		this.meanDistance = this.computeMeanDistance(topology);
 		
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
 		
@@ -430,40 +403,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
 	}
 	
-	private int getHighestTaskIndex(TaskSet tasks) {
-		ArrayList<Task> tasksToPickup = new ArrayList<Task>(tasks);
-		
-		int index = 0;
-		for(Task t : tasksToPickup) {
-			if(index < t.id+1)
-				index = t.id+1;
-		}
-		return index;
-	}
-	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		
 		Plan plan;
-		if(vehicle.getCurrentTasks().isEmpty())
-			this.numTasks = tasks.size();
-		else {
-			this.numTasks = tasks.size();
-			this.numTasks += vehicle.getCurrentTasks().size();
-		}
-		if(this.numTasks < getHighestTaskIndex(tasks))
-			this.numTasks = getHighestTaskIndex(tasks);
 		
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			// ...
-			//plan = naivePlan(vehicle, tasks);
 			plan = planASTAR(vehicle, tasks);
 			break;
 		case BFS:
-			// ...
-			//plan = naivePlan(vehicle, tasks);
 			plan = planBFS(vehicle, tasks);
 			break;
 		case RANDOM:
@@ -482,7 +432,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		System.out.println("Planning with BFS...");
 		long startTime = System.currentTimeMillis();
 		
-		// Initialize best Hashmap linking a state and the distance to reach it. 
+		// Initialize the Hashmap linking a state and the distance to reach it. 
 		// Used to check if a state has already been visited
         HashMap<String, State> C = new HashMap<String, State>(); 
         
@@ -516,7 +466,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		while(!queue.isEmpty())
 		{
-			//System.out.println(queue.size());
 			// Pop the first state from the queue
 			state = queue.get(0);
 			queue.remove(0);
@@ -546,29 +495,21 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				queue.addAll(state.getChildren()); 
 				
 			}else {
-				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { //We find a better solution for this state
-					
+				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { 
+					//We find a better solution for this state
 					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
-					//C.get(state.getStateID()).setActionToState(state.actionToState);
-					//C.get(state.getStateID()).setParent(state.parent);
-					//C.get(state.getStateID()).setDistance(state.distance);
 					C.put(state.getStateID(), state);
 					
+					// Build children of current state
 					for(City neighbour : state.getLocation().neighbors())
 						state.takeAction(MOVE, neighbour);
 					state.takeAction(PICKUP, null);
 					state.takeAction(DELIVER, null);
 					
-					// Merge newly created states to queue accordingly to heuristic
+					// Append new states to the end of the queue to implement BFS
 					queue.addAll(state.getChildren()); 
 				}
 			}
-			
-			/*
-			// returns first three found goal 
-			//(works too if statement is removed but takes much longer because whole tree is explored)
-			*/
-			
 		}
 		
 		// Extract best found solution
@@ -587,9 +528,12 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		do {
 			plan.add(bestGoal.getActionToState());
 			bestGoal = bestGoal.getParent();
-		}while(bestGoal.getParent() != null);	
+		}while(bestGoal.getParent() != null);
+		
 		Collections.reverse(plan);
+		
 		Plan returnPlan = new Plan(vehicle.getCurrentCity());
+		
 		for(int i=0; i<plan.size(); i++)
 			returnPlan.append(plan.get(i));
 		
@@ -597,23 +541,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		System.out.println("...Done! (search took "+ (endTime - startTime) +" ms)");
 		return returnPlan;
 	}
-	
-	private double computeMeanDistance(Topology topology) {
-		double sumDist = 0;
-		int nbrConnections = 0;
-		for(City c : topology.cities()) {
-			for(City n : c.neighbors()) {
-				nbrConnections++;
-				sumDist += c.distanceTo(n);
-				//System.out.println(c.distanceTo(n));
-
-			}
-		}
-		return sumDist/nbrConnections;
-	}
 
 	private double heuristic(State s) {
-		// Estimate of the best path from node n: f(n)
+		// Estimate distance remaining for node n: f(n)
 		double f = 0;
 		
 		// Add cost of node n: g(n)
@@ -638,7 +568,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	}
 	
 	private void sort(ArrayList<State> list) {
-		// Implementing bubble sort
+		// Implementing bubble sort (increasing heuristic)
 		for(int i=1; i<list.size(); i++) // for each element of the list
 		{
 			for(int j=i-1; j>=0; j--) // Let the bubble rise!
@@ -653,71 +583,36 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 	}
 	private boolean checkSort(ArrayList<State> list) {
-
+		// Verify that the given list is sorted (increasing heuristic)
 		for(int i=1; i<list.size();i++) {
 			if(list.get(i).heuristic < list.get(i-1).heuristic) {
-				System.out.println("MASSIVE ERROR IN SORT OF HEURISTIC!");
+				System.out.println("Error in checkSort: list is not sorted.");
 				return false;
 			}
 		}
 		return true;
 	}
-	private void deprecated_merge(ArrayList<State> M, ArrayList<State> m) {
-		// Both lists must be sorted! Merging M <- m
-		int i = 0; // M iterator
-		int j = 0; // m iterator
-		int sizeM = M.size();
-		int sizem = m.size();
-
-		while(true)
-		{
-			if(M.isEmpty()) {
-				M.addAll(m);
-				break;
-			}
-			if(m.isEmpty()) {
-				break;
-			}
-			// Found a place to merge
-			if(M.get(i).heuristic >= m.get(j).heuristic) {
-				M.add(i,m.get(j)); 
-				if(j < sizem-1) // consider next child
-					j++;
-				else
-					break; // m is completely merged
-			}
-			// Check next place
-			else if(i < sizeM-1)
-				i++;
-			else {
-				if(!m.isEmpty()) { // Last children must still me added. 
-					for(int k=j; k<sizem-1; k++)
-						M.add(m.get(k));
-				}
-				break;
-			}
-		}
-	}
 	private void merge(ArrayList<State> M, ArrayList<State> m) {
+		// Used to merge newly created nodes to the queue. 
 		// Both lists must be sorted! Merging M <- m
 		int i = 0; // M iterator
-		int j = 0; // m iterator
-		int sizeM = M.size();
-		int sizem = m.size();
+
 		// Copy list to local variable to avoid changing tree state space
 		ArrayList<State> statesToAdd = new ArrayList<State>();
 		statesToAdd.addAll(m);
 		State s = null;
 		
+		// Make sure both lists are sorted. 
 		if(!checkSort(M) || !checkSort(m)) {
 			System.out.println("Error while trying to merge. Both lists are not sorted.");
+			return;
 		}
 		
 		// As long as all new states have not been added
 		while(!statesToAdd.isEmpty())
 		{
 			if(M.isEmpty()) {
-				// Directly add the sorted list of states to add
+				// Directly add the sorted list of states to queue
 				M.addAll(statesToAdd);
 				break;
 			}
@@ -726,7 +621,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 				s = statesToAdd.get(0);
 				statesToAdd.remove(0);
 			}
-			// Find a place for s
+			// Find a place for s in queue
 			while(s != null) {
 				// Found a place in the queue to merge
 				if(M.get(i).heuristic >= s.heuristic) {
@@ -751,21 +646,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 	}
 	
-	private void limitSize(ArrayList<State> list, int N) {
-		// Implement beam search
-		while(list.size() > N)
-		{
-			list.remove(list.size()-1);
-		}
-	}
 
 	private Plan planASTAR(Vehicle vehicle, TaskSet tasks) {
 		
 		System.out.println("Planning with A*...");
 		long startTime = System.currentTimeMillis();
 		
-		// Initialize best Hashmap linking a state and the distance to reach it. 
-		// Used to check if a state has already been visited
+		// Initialize the Hashmap linking a state and the distance to reach it. 
+		// Used to check if a state has already been visited. 
         HashMap<String, State> C = new HashMap<String, State>(); 
 		
 		
@@ -796,7 +684,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		while(!queue.isEmpty())
 		{
-			//System.out.println(queue.size());
 			// Pop the first state from the queue
 			state = queue.get(0);
 			queue.remove(0);
@@ -832,9 +719,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					
 					// Update the tree
 					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
-					//C.get(state.getStateID()).setActionToState(state.actionToState);
-					//C.get(state.getStateID()).setParent(state.parent);
-					//C.get(state.getStateID()).setDistance(state.distance);
 					C.put(state.getStateID(), state);
 					
 					// Explore again child nodes
@@ -846,12 +730,11 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					// Merge newly created states to queue accordingly to heuristic
 					sort(state.getChildren());
 					merge(queue,state.getChildren());
-					System.out.println("Removed old state from queue.");
 				}
 			}
 		}
 		
-		// Extract best found solution
+		// Extract best found solution - actually only one unique solution is produced. 
 		double distance = Double.MAX_VALUE;
 		State bestGoal = null;
 		for(State s : goalStates)
@@ -867,8 +750,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		do {
 			plan.add(bestGoal.getActionToState());
 			bestGoal = bestGoal.getParent();
-		}while(bestGoal.getParent() != null);	
+		}while(bestGoal.getParent() != null);
+		
 		Collections.reverse(plan);
+		
 		Plan returnPlan = new Plan(vehicle.getCurrentCity());
 		for(int i=0; i<plan.size(); i++)
 			returnPlan.append(plan.get(i));
