@@ -652,12 +652,23 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 		}
 	}
-	private void merge(ArrayList<State> M, ArrayList<State> m) {
+	private boolean checkSort(ArrayList<State> list) {
+
+		for(int i=1; i<list.size();i++) {
+			if(list.get(i).heuristic < list.get(i-1).heuristic) {
+				System.out.println("MASSIVE ERROR IN SORT OF HEURISTIC!");
+				return false;
+			}
+		}
+		return true;
+	}
+	private void deprecated_merge(ArrayList<State> M, ArrayList<State> m) {
 		// Both lists must be sorted! Merging M <- m
 		int i = 0; // M iterator
 		int j = 0; // m iterator
 		int sizeM = M.size();
 		int sizem = m.size();
+
 		while(true)
 		{
 			if(M.isEmpty()) {
@@ -684,6 +695,58 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 						M.add(m.get(k));
 				}
 				break;
+			}
+		}
+	}
+	private void merge(ArrayList<State> M, ArrayList<State> m) {
+		// Both lists must be sorted! Merging M <- m
+		int i = 0; // M iterator
+		int j = 0; // m iterator
+		int sizeM = M.size();
+		int sizem = m.size();
+		// Copy list to local variable to avoid changing tree state space
+		ArrayList<State> statesToAdd = new ArrayList<State>();
+		statesToAdd.addAll(m);
+		State s = null;
+		
+		if(!checkSort(M) || !checkSort(m)) {
+			System.out.println("Error while trying to merge. Both lists are not sorted.");
+		}
+		
+		// As long as all new states have not been added
+		while(!statesToAdd.isEmpty())
+		{
+			if(M.isEmpty()) {
+				// Directly add the sorted list of states to add
+				M.addAll(statesToAdd);
+				break;
+			}
+			else {
+				//Pop next state to merge
+				s = statesToAdd.get(0);
+				statesToAdd.remove(0);
+			}
+			// Find a place for s
+			while(s != null) {
+				// Found a place in the queue to merge
+				if(M.get(i).heuristic >= s.heuristic) {
+					M.add(i,s); 
+					s = null;
+					if(i < M.size()-1)
+						i++; // Consider next place in queue for next state to add
+					break;
+				}
+				else if(i < M.size()-1) {
+					i++; // Consider next place in queue for same state to add
+				}
+				// Append at the end of queue
+				else if(i == M.size()-1 && M.get(i).heuristic <= s.heuristic){
+					M.add(s); 
+					s = null;
+					if(i < M.size()-1)
+						i++;
+					break;
+				}
 			}
 		}
 	}
@@ -783,6 +846,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 					// Merge newly created states to queue accordingly to heuristic
 					sort(state.getChildren());
 					merge(queue,state.getChildren());
+					System.out.println("Removed old state from queue.");
 				}
 			}
 		}
