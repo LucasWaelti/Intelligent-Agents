@@ -538,6 +538,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		long endTime = System.currentTimeMillis();
 		System.out.println("...Done! (search took "+ (endTime - startTime) +" ms)");
+		System.out.println(returnPlan);
 		return returnPlan;
 	}
 
@@ -581,16 +582,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 		}
 	}
-	private boolean checkSort(ArrayList<State> list) {
-		// Verify that the given list is sorted (increasing heuristic)
-		for(int i=1; i<list.size();i++) {
-			if(list.get(i).heuristic < list.get(i-1).heuristic) {
-				System.out.println("Error in checkSort: list is not sorted.");
-				return false;
-			}
-		}
-		return true;
-	}
+	
 	private void merge(ArrayList<State> M, ArrayList<State> m) {
 		// Used to merge newly created nodes to the queue. 
 		// Both lists must be sorted! Merging M <- m
@@ -600,12 +592,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		ArrayList<State> statesToAdd = new ArrayList<State>();
 		statesToAdd.addAll(m);
 		State s = null;
-		
-		// Make sure both lists are sorted. 
-		if(!checkSort(M) || !checkSort(m)) {
-			System.out.println("Error while trying to merge. Both lists are not sorted.");
-			return;
-		}
 		
 		// As long as all new states have not been added
 		while(!statesToAdd.isEmpty())
@@ -708,19 +694,11 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}else {
 				if(C.get(state.getStateID()).getDistance()>state.getDistance()) { 
 					//We find a better solution for this state
-					// Remove unwanted children from queue
-					for(State s : C.get(state.getStateID()).getChildren()) {
-						if(!queue.remove(s))
-							System.out.println("Info: A* tried to remove an unexisting state from the queue.");
-						else
-							System.out.println("Info: A* removed old state from queue.");
-					}
 					
-					// Update the tree
-					C.get(state.getStateID()).getParent().removeChild(C.get(state.getStateID()));
+					// Update state value in C
 					C.put(state.getStateID(), state);
 					
-					// Explore again child nodes
+					// Explore "again" child nodes
 					for(City neighbour : state.getLocation().neighbors())
 						state.takeAction(MOVE, neighbour);
 					state.takeAction(PICKUP, null);
@@ -759,6 +737,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		long endTime = System.currentTimeMillis();
 		System.out.println("...Done! (search took "+ (endTime - startTime) +" ms)");
+		System.out.println(returnPlan);
 		return returnPlan;
 	}
 	
