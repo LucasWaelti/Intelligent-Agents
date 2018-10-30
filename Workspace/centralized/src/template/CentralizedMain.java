@@ -254,6 +254,9 @@ public class CentralizedMain implements CentralizedBehavior {
     	public void add(SingleAction a) {
     		this.plan.add(a);
     	}
+    	public void add(int i,SingleAction a) {
+    		this.plan.add(i,a);
+    	}
     	public void remove(SingleAction a) {
     		this.plan.remove(a);
     	}
@@ -280,6 +283,44 @@ public class CentralizedMain implements CentralizedBehavior {
     	public void removeTask(Task t) {
     		// TODO
     	}
+    	
+    	/************** Generate an actual Logist plan for a VehiclePlan **************/
+        private void goFromTo(Plan plan, City from, City to) {
+        	for (City city : from.pathTo(to)) {
+        		if(city != null)
+        			plan.appendMove(city);
+            }
+        }
+        private void appendSingleAction(Plan plan, SingleAction a) {
+        	if(a.action == PICKUP) {
+        		plan.appendPickup(a.task);
+        	}
+        	else if(a.action == DELIVER) {
+        		plan.appendDelivery(a.task);
+        	}
+        }
+        public Plan convertToLogistPlan() {
+        	Plan logist_plan = new Plan(this.vehicle.getCurrentCity());
+        	City from = null;
+        	City to = null;
+        	
+        	goFromTo(logist_plan,this.vehicle.getCurrentCity(),this.plan.get(0).task.pickupCity);
+        	for(int i=0; i<this.plan.size();i++) {
+        		appendSingleAction(logist_plan,this.plan.get(i));
+        		if(i<this.plan.size()-1) {
+        			if(this.plan.get(i).action == PICKUP)
+        				from = this.plan.get(i).task.pickupCity;
+        			else
+        				from = this.plan.get(i).task.deliveryCity;
+	        		if(this.plan.get(i+1).action == PICKUP)
+	    				to = this.plan.get(i+1).task.pickupCity;
+	    			else
+	    				to = this.plan.get(i+1).task.deliveryCity;
+        			goFromTo(logist_plan,from ,to);
+        		}
+        	}
+        	return logist_plan;
+        }
     }
     
     /************** Setup and Plan **************/
@@ -306,7 +347,7 @@ public class CentralizedMain implements CentralizedBehavior {
     }
     
     /************** Validate a global plan **************/
-    private boolean validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
+    private boolean isGlobalPlanValid(ArrayList<VehiclePlan> plan_global) {
     	int num_tasks = 0;
     	for(VehiclePlan plan_vehicle : plan_global) {
     		// Check if the load never exceeds the capacity
@@ -321,6 +362,31 @@ public class CentralizedMain implements CentralizedBehavior {
     		return false;
     	else
     		return true;
+    }
+    private void validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
+    	// Try and make an invalid plan (capacity overshoot) valid by changing the order of actions
+    	for(VehiclePlan plan_vehicle : plan_global) {
+    		// Check if the load never exceeds the capacity
+    		for(int i=0; i<plan_vehicle.load.size();i++) {
+    			while(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity()) {
+    				// Deliver tasks before picking the one causing an issue
+    				
+    				// Find the heaviest task and command to deliver it first
+    				double heaviest = 0;
+    				SingleAction act = null;
+    				for(int j=i+1;j<plan_vehicle.plan.size();j++) {
+    					if(plan_vehicle.plan.get(j).action==DELIVER && plan_vehicle.plan.get(j).task.weight > heaviest) {
+    						heaviest = plan_vehicle.plan.get(j).task.weight;
+    						act = plan_vehicle.plan.get(j);
+    					}
+    				}
+    				plan_vehicle.remove(act);
+    				plan_vehicle.add(i,act);
+    				
+    				plan_vehicle.updateLoadTable();
+    			}
+    		}
+    	}
     }
     /************** Clone a global plan **************/
     private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
@@ -343,6 +409,7 @@ public class CentralizedMain implements CentralizedBehavior {
         }
     }
 
+    /************** Produce a Plan for each Vehicle **************/
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         long time_start = System.currentTimeMillis();
@@ -355,13 +422,11 @@ public class CentralizedMain implements CentralizedBehavior {
         // Initialize the global plan (each VehiclePlan is created)
         initGlobalPlan(clusters);
         
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-        Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
-
+        validateGlobalPlan(this.globalPlan);
+        
         List<Plan> plans = new ArrayList<Plan>();
-        plans.add(planVehicle1);
-        while (plans.size() < vehicles.size()) {
-            plans.add(Plan.EMPTY);
+        for(int i=0; i<this.globalPlan.size();i++) {
+        	plans.add(this.globalPlan.get(i).convertToLogistPlan());
         }
         
         long time_end = System.currentTimeMillis();
@@ -376,11 +441,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	
     }
     
-    private Plan convertToPlan(ArrayList<VehiclePlan> plans) {
-    	Plan plan = null;
-    	// TODO
-    	return plan;
-    }
+    
 
     private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
         City current = vehicle.getCurrentCity();
