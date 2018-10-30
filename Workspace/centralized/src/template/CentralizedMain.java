@@ -36,6 +36,9 @@ public class CentralizedMain implements CentralizedBehavior {
     private long timeout_setup;
     private long timeout_plan;
     
+    // Create empty ArrayList of VehiclePlans
+    private ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
+    
     
     /************** Initial Solution generation (DBSCAN based) **************/
     private class TasksCluster{
@@ -254,7 +257,7 @@ public class CentralizedMain implements CentralizedBehavior {
         // this code is used to get the timeouts
         LogistSettings ls = null;
         try {
-            ls = Parsers.parseSettings("config\\settings_default.xml");
+            ls = Parsers.parseSettings("config/settings_default.xml");
         }
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
@@ -287,8 +290,7 @@ public class CentralizedMain implements CentralizedBehavior {
         // Assign clusters to each vehicle (subdivide clusters if required)
         assignClusters(vehicles,clusters);
         
-        // Create empty ArrayList of VehiclePlans
-        ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
+        
         for(TasksCluster c : clusters) {
         	// TODO
         }
@@ -309,9 +311,54 @@ public class CentralizedMain implements CentralizedBehavior {
         return plans;
     }
     
+    private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
+    	return false;
+    }
+    
+    private double computeCost() {
+    	for(int v = 0; v< )
+    	return 2;
+    }
+    
+    
     private void slSearch() {
     	// TODO - update all vehicle plans through Stochastic Local Search
     	
+        long time_start = System.currentTimeMillis();
+        
+        do {
+        	
+	    	//Create a copy of the current plan. Used to compare new and old plan. 
+	    	ArrayList<VehiclePlan> oldPlan = this.cloneGlobalPlan(this.globalPlan);
+	    	
+	    	
+	    	int iter = 0;
+	    	boolean findSolution = false;
+	    	
+	    	double newCost = 0;
+	    	double oldCost = 0; 
+	    	double learningRate=1;
+	    	
+	    	//Search for solutions close to the current plan. Do while a valid new plan is found. 
+	    	do {
+	    		findSolution = this.searchNeighbor(oldPlan);
+	    		iter++;
+	    	} while(!findSolution || iter <1000);
+	    	
+	    	if(!findSolution) {
+	    		System.out.println("NO valid neighboring solution found");
+	    		globalPlan = oldPlan;
+	    	}
+	    	else {
+	        	newCost = this.computeCost();
+	        	if(Math.random() >= Math.exp((oldCost-newCost)/learningRate)) {        		
+	        		// We don't keep the new plan, even if it might be better
+	        		globalPlan=oldPlan;
+	        	}
+	        	oldCost=newCost;
+	    	}
+    	
+        } while(System.currentTimeMillis()-time_start < this.timeout_plan - 1000) ;
     }
     
     private Plan convertToPlan(ArrayList<VehiclePlan> plans) {
