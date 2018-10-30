@@ -32,9 +32,13 @@ public class CentralizedMain implements CentralizedBehavior {
 	
     private Topology topology;
     private TaskDistribution distribution;
+    private TaskSet taskSet;
     private Agent agent;
     private long timeout_setup;
     private long timeout_plan;
+    
+    // Create empty ArrayList of VehiclePlans
+    private ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
     
     
     /************** Initial Solution generation (DBSCAN based) **************/
@@ -196,7 +200,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	
     	protected Vehicle vehicle = null;
     	
-    	protected ArrayList<SingleAction> plan = new ArrayList<SingleAction>();
+    	protected ArrayList<SingleAction> 	plan = new ArrayList<SingleAction>();
     	protected ArrayList<Double> 		load = new ArrayList<Double>();
     	
     	public VehiclePlan(Vehicle v) {
@@ -206,14 +210,45 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     	
     	public VehiclePlan clone() {
-    		// Clone a Vehicle plan
+    		// Returns a copy of itself
     		VehiclePlan clone = new VehiclePlan(this.vehicle);
     		
     		for(SingleAction a : this.plan) {
     			clone.add(new SingleAction(a.task,a.action));
     		}
-    		clone.load = this.load;
+    		for(int i=0; i<this.load.size(); i++) {
+    			clone.load.add(this.load.get(i));
+    		}
     		return clone;
+    	}
+    	
+    	public void generateLoadTable() {
+    		// Populate the ArrayList
+    		double pred = 0;
+    		for(int i=0; i<this.plan.size();i++) {
+    			if(this.plan.get(i).action == PICKUP) {
+    				this.load.add(pred + this.plan.get(i).task.weight);
+    				pred = pred + this.plan.get(i).task.weight;
+    			}
+    			else {
+    				this.load.add(pred - this.plan.get(i).task.weight);
+    				pred = pred - this.plan.get(i).task.weight;
+    			}
+    		}
+    	}
+    	public void updateLoadTable() {
+    		// Update the values of the ArrayList
+    		double pred = 0;
+    		for(int i=0; i<this.load.size();i++) {
+    			if(this.plan.get(i).action == PICKUP) {
+    				this.load.set(i,pred + this.plan.get(i).task.weight);
+    				pred = pred + this.plan.get(i).task.weight;
+    			}
+    			else {
+    				this.load.set(i,pred - this.plan.get(i).task.weight);
+    				pred = pred - this.plan.get(i).task.weight;
+    			}
+    		}
     	}
     	
     	public void add(SingleAction a) {
@@ -270,6 +305,24 @@ public class CentralizedMain implements CentralizedBehavior {
         this.agent = agent;
     }
     
+    /************** Validate a global plan **************/
+    private boolean validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
+    	int num_tasks = 0;
+    	for(VehiclePlan plan_vehicle : plan_global) {
+    		// Check if the load never exceeds the capacity
+    		for(int i=0; i<plan_vehicle.load.size();i++) {
+    			if(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity())
+    				return false;
+    		}
+    		num_tasks += plan_vehicle.plan.size()/2;
+    	}
+    	if(num_tasks != this.taskSet.size()) 
+    		// Check if number of tasks is correct
+    		return false;
+    	else
+    		return true;
+    }
+    /************** Clone a global plan **************/
     private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
     	ArrayList<VehiclePlan> newPlan = new ArrayList<VehiclePlan>();
     	for(int i=0; i<original.size();i++) {
@@ -277,21 +330,30 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     	return newPlan;
     }
+    /************** Initialize the global plan from clusters info **************/
+    private void initGlobalPlan(ArrayList<TasksCluster> clusters){
+    	int i = 0;
+        for(TasksCluster c : clusters) {
+        	this.globalPlan.add(new VehiclePlan(c.assignedVehicle));
+        	for(Task t : c.getList()) {
+        		globalPlan.get(i).addPairInit(new SingleAction(t,this.PICKUP),new SingleAction(t,this.DELIVER));
+        	}
+        	globalPlan.get(i).generateLoadTable();
+        	i++;
+        }
+    }
 
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         long time_start = System.currentTimeMillis();
+        this.taskSet = tasks;
         
         // Create clusters of tasks (less or as much as number of vehicles)
         ArrayList<TasksCluster> clusters = clusterTasks(vehicles,tasks);
         // Assign clusters to each vehicle (subdivide clusters if required)
         assignClusters(vehicles,clusters);
-        
-        // Create empty ArrayList of VehiclePlans
-        ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
-        for(TasksCluster c : clusters) {
-        	// TODO
-        }
+        // Initialize the global plan (each VehiclePlan is created)
+        initGlobalPlan(clusters);
         
 //		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
         Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
