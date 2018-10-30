@@ -29,9 +29,11 @@ public class CentralizedMain implements CentralizedBehavior {
 	
 	private final int PICKUP = 0;
 	private final int DELIVER = 1;
+	private final int MOVE = 2 ; 
 	
     private Topology topology;
     private TaskDistribution distribution;
+    private TaskSet taskSet;
     private Agent agent;
     private long timeout_setup;
     private long timeout_plan;
@@ -92,13 +94,15 @@ public class CentralizedMain implements CentralizedBehavior {
     }
     private ArrayList<TasksCluster> clusterTasks(List<Vehicle> vehicles, TaskSet tasks) {
     	int ideal_number_clusters = vehicles.size();
+    	int nbrTaskAssigned = 0;
     	double epsilon = 20;
-    	ArrayList<TasksCluster> clusters;
+    	ArrayList<TasksCluster> clusters = new ArrayList<TasksCluster>();
     	do {
-    		clusters = new ArrayList<TasksCluster>();
 	    	for(Task T : tasks) {
-	    		if(isTaskAssigned(clusters,T))
+	    		if(isTaskAssigned(clusters,T)) {
+	    			nbrTaskAssigned++;
 	    			continue;
+	    		}
 	    		for(Task t : tasks) {
 	    			if(t.id == T.id)
 	    				continue;
@@ -121,7 +125,9 @@ public class CentralizedMain implements CentralizedBehavior {
 	    		}
 	    	}
 	    	epsilon += 10;
-    	}while(clusters.size() > ideal_number_clusters);
+    	}while(nbrTaskAssigned < tasks.size());
+    		
+    		//(clusters.size() < ideal_number_clusters);
     	
     	return clusters;
     }
@@ -195,11 +201,13 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     }
     
+    
+    
     private class VehiclePlan{
     	
     	protected Vehicle vehicle = null;
     	
-    	protected ArrayList<SingleAction> plan = new ArrayList<SingleAction>();
+    	protected ArrayList<SingleAction> 	plan = new ArrayList<SingleAction>();
     	protected ArrayList<Double> 		load = new ArrayList<Double>();
     	
     	public VehiclePlan(Vehicle v) {
@@ -209,18 +217,52 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     	
     	public VehiclePlan clone() {
-    		// Clone a Vehicle plan
+    		// Returns a copy of itself
     		VehiclePlan clone = new VehiclePlan(this.vehicle);
     		
     		for(SingleAction a : this.plan) {
     			clone.add(new SingleAction(a.task,a.action));
     		}
-    		clone.load = this.load;
+    		for(int i=0; i<this.load.size(); i++) {
+    			clone.load.add(this.load.get(i));
+    		}
     		return clone;
+    	}
+    	
+    	public void generateLoadTable() {
+    		// Populate the ArrayList
+    		double pred = 0;
+    		for(int i=0; i<this.plan.size();i++) {
+    			if(this.plan.get(i).action == PICKUP) {
+    				this.load.add(pred + this.plan.get(i).task.weight);
+    				pred = pred + this.plan.get(i).task.weight;
+    			}
+    			else {
+    				this.load.add(pred - this.plan.get(i).task.weight);
+    				pred = pred - this.plan.get(i).task.weight;
+    			}
+    		}
+    	}
+    	public void updateLoadTable() {
+    		// Update the values of the ArrayList
+    		double pred = 0;
+    		for(int i=0; i<this.load.size();i++) {
+    			if(this.plan.get(i).action == PICKUP) {
+    				this.load.set(i,pred + this.plan.get(i).task.weight);
+    				pred = pred + this.plan.get(i).task.weight;
+    			}
+    			else {
+    				this.load.set(i,pred - this.plan.get(i).task.weight);
+    				pred = pred - this.plan.get(i).task.weight;
+    			}
+    		}
     	}
     	
     	public void add(SingleAction a) {
     		this.plan.add(a);
+    	}
+    	public void add(int i,SingleAction a) {
+    		this.plan.add(i,a);
     	}
     	public void remove(SingleAction a) {
     		this.plan.remove(a);
@@ -248,6 +290,44 @@ public class CentralizedMain implements CentralizedBehavior {
     	public void removeTask(Task t) {
     		// TODO
     	}
+    	
+    	/************** Generate an actual Logist plan for a VehiclePlan **************/
+        private void goFromTo(Plan plan, City from, City to) {
+        	for (City city : from.pathTo(to)) {
+        		if(city != null)
+        			plan.appendMove(city);
+            }
+        }
+        private void appendSingleAction(Plan plan, SingleAction a) {
+        	if(a.action == PICKUP) {
+        		plan.appendPickup(a.task);
+        	}
+        	else if(a.action == DELIVER) {
+        		plan.appendDelivery(a.task);
+        	}
+        }
+        public Plan convertToLogistPlan() {
+        	Plan logist_plan = new Plan(this.vehicle.getCurrentCity());
+        	City from = null;
+        	City to = null;
+        	
+        	goFromTo(logist_plan,this.vehicle.getCurrentCity(),this.plan.get(0).task.pickupCity);
+        	for(int i=0; i<this.plan.size();i++) {
+        		appendSingleAction(logist_plan,this.plan.get(i));
+        		if(i<this.plan.size()-1) {
+        			if(this.plan.get(i).action == PICKUP)
+        				from = this.plan.get(i).task.pickupCity;
+        			else
+        				from = this.plan.get(i).task.deliveryCity;
+	        		if(this.plan.get(i+1).action == PICKUP)
+	    				to = this.plan.get(i+1).task.pickupCity;
+	    			else
+	    				to = this.plan.get(i+1).task.deliveryCity;
+        			goFromTo(logist_plan,from ,to);
+        		}
+        	}
+        	return logist_plan;
+        }
     }
     
     /************** Setup and Plan **************/
@@ -273,6 +353,49 @@ public class CentralizedMain implements CentralizedBehavior {
         this.agent = agent;
     }
     
+    /************** Validate a global plan **************/
+    private boolean isGlobalPlanValid(ArrayList<VehiclePlan> plan_global) {
+    	int num_tasks = 0;
+    	for(VehiclePlan plan_vehicle : plan_global) {
+    		// Check if the load never exceeds the capacity
+    		for(int i=0; i<plan_vehicle.load.size();i++) {
+    			if(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity())
+    				return false;
+    		}
+    		num_tasks += plan_vehicle.plan.size()/2;
+    	}
+    	if(num_tasks != this.taskSet.size()) 
+    		// Check if number of tasks is correct
+    		return false;
+    	else
+    		return true;
+    }
+    private void validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
+    	// Try and make an invalid plan (capacity overshoot) valid by changing the order of actions
+    	for(VehiclePlan plan_vehicle : plan_global) {
+    		// Check if the load never exceeds the capacity
+    		for(int i=0; i<plan_vehicle.load.size();i++) {
+    			while(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity()) {
+    				// Deliver tasks before picking the one causing an issue
+    				
+    				// Find the heaviest task and command to deliver it first
+    				double heaviest = 0;
+    				SingleAction act = null;
+    				for(int j=i+1;j<plan_vehicle.plan.size();j++) {
+    					if(plan_vehicle.plan.get(j).action==DELIVER && plan_vehicle.plan.get(j).task.weight > heaviest) {
+    						heaviest = plan_vehicle.plan.get(j).task.weight;
+    						act = plan_vehicle.plan.get(j);
+    					}
+    				}
+    				plan_vehicle.remove(act);
+    				plan_vehicle.add(i,act);
+    				
+    				plan_vehicle.updateLoadTable();
+    			}
+    		}
+    	}
+    }
+    /************** Clone a global plan **************/
     private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
     	ArrayList<VehiclePlan> newPlan = new ArrayList<VehiclePlan>();
     	for(int i=0; i<original.size();i++) {
@@ -280,22 +403,47 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     	return newPlan;
     }
+    /************** Initialize the global plan from clusters info **************/
+    private void initGlobalPlan(ArrayList<TasksCluster> clusters){
+    	int i = 0;
+        for(TasksCluster c : clusters) {
+        	this.globalPlan.add(new VehiclePlan(c.assignedVehicle));
+        	for(Task t : c.getList()) {
+        		globalPlan.get(i).addPairInit(new SingleAction(t,this.PICKUP),new SingleAction(t,this.DELIVER));
+        	}
+        	globalPlan.get(i).generateLoadTable();
+        	i++;
+        }
+    }
 
+    /************** Produce a Plan for each Vehicle **************/
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         long time_start = System.currentTimeMillis();
+        this.taskSet = tasks;
+        
         
         // Create clusters of tasks (less or as much as number of vehicles)
         ArrayList<TasksCluster> clusters = clusterTasks(vehicles,tasks);
         // Assign clusters to each vehicle (subdivide clusters if required)
         assignClusters(vehicles,clusters);
+       
+        // Initialize the global plan (each VehiclePlan is created)
+        initGlobalPlan(clusters);
+
+        validateGlobalPlan(this.globalPlan);
         
-        
-        for(TasksCluster c : clusters) {
-        	// TODO
+        List<Plan> plans = new ArrayList<Plan>();
+        for(int i=0; i<this.globalPlan.size();i++) {
+        	plans.add(this.globalPlan.get(i).convertToLogistPlan());
         }
         
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
+        
+        /*
+        naivePlanV2(vehicles.get(0), tasks);
+        System.out.println(globalPlan);
+
+        computeCost();
         Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
 
         List<Plan> plans = new ArrayList<Plan>();
@@ -304,6 +452,7 @@ public class CentralizedMain implements CentralizedBehavior {
             plans.add(Plan.EMPTY);
         }
         
+        */           
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
         System.out.println("The plan was generated in "+duration+" milliseconds.");
@@ -311,16 +460,54 @@ public class CentralizedMain implements CentralizedBehavior {
         return plans;
     }
     
+    
     private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
     	return false;
     }
     
+    /************** Compute the cost of the current plan **************/
     private double computeCost() {
-    	for(int v = 0; v< )
-    	return 2;
+    	double cost = 0.0;
+    	for(int v = 0; v< this.globalPlan.size(); v++){
+    		
+			//Clarify coding
+    		VehiclePlan currentVehicle = this.globalPlan.get(v);
+			
+			//Give a track of the vehicle position. Will be updated after each action
+			City vehicleCity = currentVehicle.vehicle.getCurrentCity();
+			
+			for(int t = 0; t< currentVehicle.plan.size(); t++) {
+				
+				//Clarify coding
+				SingleAction currentAction = currentVehicle.plan.get(t);
+				
+				// First action -> always pickup
+        		if(t == 0) {
+        			cost += vehicleCity.distanceTo(currentAction.task.pickupCity)
+        				*currentVehicle.vehicle.costPerKm();
+        			vehicleCity=currentAction.task.pickupCity;
+        		}
+        		else {
+        			
+        			//Clarify coding
+    				SingleAction previousAction = currentVehicle.plan.get(t-1);
+    				
+        			if(currentAction.action== this.PICKUP) {
+        				cost += vehicleCity.distanceTo(currentAction.task.pickupCity)*currentVehicle.vehicle.costPerKm();
+            			vehicleCity=currentAction.task.pickupCity;
+        			}
+        			else if (currentAction.action== this.DELIVER) {
+        				cost += vehicleCity.distanceTo(currentAction.task.deliveryCity)*currentVehicle.vehicle.costPerKm();
+        						//+ currentAction.task.reward;
+            			vehicleCity=currentAction.task.deliveryCity;
+        			}    				
+        		}
+    		}
+    	}
+    	System.out.println(cost);
+    	return cost;
     }
-    
-    
+      
     private void slSearch() {
     	// TODO - update all vehicle plans through Stochastic Local Search
     	
@@ -361,11 +548,7 @@ public class CentralizedMain implements CentralizedBehavior {
         } while(System.currentTimeMillis()-time_start < this.timeout_plan - 1000) ;
     }
     
-    private Plan convertToPlan(ArrayList<VehiclePlan> plans) {
-    	Plan plan = null;
-    	// TODO
-    	return plan;
-    }
+    
 
     private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
         City current = vehicle.getCurrentCity();
@@ -390,5 +573,13 @@ public class CentralizedMain implements CentralizedBehavior {
             current = task.deliveryCity;
         }
         return plan;
+    }
+    
+    private void naivePlanV2(Vehicle vehicle, TaskSet tasks) {
+        City current = vehicle.getCurrentCity();
+        this.globalPlan.add(new VehiclePlan(vehicle));
+        for (Task t : tasks) {
+        	globalPlan.get(0).addPairInit(new SingleAction(t,this.PICKUP),new SingleAction(t,this.DELIVER));           
+        }
     }
 }

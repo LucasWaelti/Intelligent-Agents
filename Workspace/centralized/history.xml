@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 
-<history configuration="config\centralized.xml">
+<history configuration="config/centralized.xml">
 	<agents>
 		<agent name="centralized-main">
 			<vehicle name="Vehicle 1"/>
