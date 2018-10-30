@@ -27,6 +27,9 @@ import logist.topology.Topology.City;
 @SuppressWarnings("unused")
 public class CentralizedMain implements CentralizedBehavior {
 	
+	private final int PICKUP = 0;
+	private final int DELIVER = 1;
+	
     private Topology topology;
     private TaskDistribution distribution;
     private Agent agent;
@@ -178,6 +181,71 @@ public class CentralizedMain implements CentralizedBehavior {
     	return;
     }
     
+    /************** Scheduling **************/
+    private class SingleAction{
+    	protected Task task = null;
+    	protected int action = -1;
+    	
+    	public SingleAction(Task t, int a) {
+    		this.task = t;
+    		this.action = a;
+    	}
+    }
+    
+    private class VehiclePlan{
+    	
+    	protected Vehicle vehicle = null;
+    	
+    	protected ArrayList<SingleAction> plan = new ArrayList<SingleAction>();
+    	protected ArrayList<Double> 		load = new ArrayList<Double>();
+    	
+    	public VehiclePlan(Vehicle v) {
+    		// Constructor
+    		this.vehicle = v;
+    		return;
+    	}
+    	
+    	public VehiclePlan clone() {
+    		// Clone a Vehicle plan
+    		VehiclePlan clone = new VehiclePlan(this.vehicle);
+    		
+    		for(SingleAction a : this.plan) {
+    			clone.add(new SingleAction(a.task,a.action));
+    		}
+    		clone.load = this.load;
+    		return clone;
+    	}
+    	
+    	public void add(SingleAction a) {
+    		this.plan.add(a);
+    	}
+    	public void remove(SingleAction a) {
+    		this.plan.remove(a);
+    	}
+    	public void addPairInit(SingleAction ap,SingleAction ad) {
+    		// Pickup everything first then deliver by adding new pairs in the middle of the schedule
+    		if(this.plan.size() > 0) {
+	    		this.plan.add(this.plan.size()/2,ap);
+	    		this.plan.add(this.plan.size()/2+1,ad);
+    		}
+    		else {
+    			this.plan.add(ap);
+	    		this.plan.add(ad);
+    		}
+    	}
+    	public void addPairRandom(SingleAction ap,SingleAction ad) {
+    		// TODO
+    	}
+    	public void removePair(SingleAction ap,SingleAction ad) {
+    		// TODO
+    	}
+    	public void addTask(Task t) {
+    		// TODO
+    	}
+    	public void removeTask(Task t) {
+    		// TODO
+    	}
+    }
     
     /************** Setup and Plan **************/
     @Override
@@ -201,6 +269,14 @@ public class CentralizedMain implements CentralizedBehavior {
         this.distribution = distribution;
         this.agent = agent;
     }
+    
+    private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
+    	ArrayList<VehiclePlan> newPlan = new ArrayList<VehiclePlan>();
+    	for(int i=0; i<original.size();i++) {
+    		newPlan.add(original.get(i).clone());
+    	}
+    	return newPlan;
+    }
 
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
@@ -210,6 +286,12 @@ public class CentralizedMain implements CentralizedBehavior {
         ArrayList<TasksCluster> clusters = clusterTasks(vehicles,tasks);
         // Assign clusters to each vehicle (subdivide clusters if required)
         assignClusters(vehicles,clusters);
+        
+        // Create empty ArrayList of VehiclePlans
+        ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
+        for(TasksCluster c : clusters) {
+        	// TODO
+        }
         
 //		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
         Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
@@ -225,6 +307,17 @@ public class CentralizedMain implements CentralizedBehavior {
         System.out.println("The plan was generated in "+duration+" milliseconds.");
         
         return plans;
+    }
+    
+    private void slSearch() {
+    	// TODO - update all vehicle plans through Stochastic Local Search
+    	
+    }
+    
+    private Plan convertToPlan(ArrayList<VehiclePlan> plans) {
+    	Plan plan = null;
+    	// TODO
+    	return plan;
     }
 
     private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
