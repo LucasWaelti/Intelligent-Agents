@@ -54,6 +54,7 @@ public class VehiclePlan {
 	public void generateLoadTable() {
 		// Populate the ArrayList
 		double pred = 0;
+		this.load = new ArrayList<Double>();
 		for(int i=0; i<this.plan.size();i++) {
 			if(this.plan.get(i).action == CentralizedMain.PICKUP) {
 				this.load.add(pred + this.plan.get(i).task.weight);
@@ -65,19 +66,14 @@ public class VehiclePlan {
 			}
 		}
 	}
-	public void updateLoadTable() {
-		// Update the values of the ArrayList
-		double pred = 0;
+	
+	
+	public boolean hasOverload() {
 		for(int i=0; i<this.load.size();i++) {
-			if(this.plan.get(i).action == CentralizedMain.PICKUP) {
-				this.load.set(i,pred + this.plan.get(i).task.weight);
-				pred = pred + this.plan.get(i).task.weight;
-			}
-			else {
-				this.load.set(i,pred - this.plan.get(i).task.weight);
-				pred = pred - this.plan.get(i).task.weight;
-			}
+			if(this.load.get(i) > this.vehicle.capacity())
+				return true;
 		}
+		return false;
 	}
 	
 	public void add(SingleAction a) {

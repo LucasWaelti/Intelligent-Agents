@@ -74,18 +74,19 @@ public class ClusterGenerator {
     	return clusters;
     }
     
-    
+    public void displayCluster(ArrayList<TasksCluster> clusterList) {
+    	int i = 0;
+    	for(TasksCluster cluster : clusterList) {
+    		System.out.println("In cluster " + i + "(vehicle "+ (int)(cluster.assignedVehicle.id()+1) +"):");
+    		for(int j=0; j<cluster.getList().size(); j++) {
+    			System.out.println(cluster.getList().get(j).pickupCity);
+    		}
+    		i++;
+    	}
+    }
     
     
     /************** Apply clustering to vehicles **************/
-    private boolean isVehicleAssigned(Vehicle v, ArrayList<TasksCluster> clusters) {
-    	for(int i=0; i<clusters.size(); i++) {
-    		if(clusters.get(i).assignedVehicle != null && 
-    				clusters.get(i).assignedVehicle.id() == v.id())
-    			return true;
-    	}
-    	return false;
-    }
     protected void assignClusters(List<Vehicle> vehicles, ArrayList<TasksCluster> clusters, int num_tasks) {
     	// If there are less clusters than vehicles, refactor the clusters
     	// Only if there are more tasks than vehicles!!
@@ -117,22 +118,32 @@ public class ClusterGenerator {
     		}
     	}
     	
-    	// Assign a vehicle to each cluster
-    	for(TasksCluster c : clusters) {
-    		double min_dist = Double.MAX_VALUE;
-    		for(Vehicle v : vehicles) {
-    			// Compute minimal distance
-    			double dist = Double.MAX_VALUE;
-    			for(int i=0; i<c.getList().size(); i++) {
-    				if(v.getCurrentCity().distanceTo(c.getList().get(i).pickupCity) < dist)
-    					dist = v.getCurrentCity().distanceTo(c.getList().get(i).pickupCity);
-    				if(dist == 0.0)
-    					break;
-    			}
-    			if(dist < min_dist && !isVehicleAssigned(v,clusters)) {
-    				c.assignedVehicle = v;
-    			}
+    	// For each vehicle, find the closest cluster
+    	for(Vehicle v : vehicles) {
+    		
+    		
+    		// Find cluster with minimal distance to the vehicle
+    		TasksCluster closest_c = null;
+    		double dist = Double.MAX_VALUE;
+    		for(TasksCluster c : clusters){
+    			if(c.assignedVehicle != null)
+    				continue;
+    			
+    			// Find the closest task in the cluster for the vehicle
+				double min_task_dist = Double.MAX_VALUE;
+				for(Task t : c.getList()) {
+					if(min_task_dist > v.getCurrentCity().distanceTo(t.pickupCity)) {
+						min_task_dist = v.getCurrentCity().distanceTo(t.pickupCity);
+					}
+				}
+				
+				if(dist > min_task_dist && c.assignedVehicle == null) {
+					dist = min_task_dist;
+					closest_c = c;
+				}
     		}
+    		// Assign the vehicle to the closest cluster
+    		closest_c.assignedVehicle = v;
     	}
     	return;
     }
