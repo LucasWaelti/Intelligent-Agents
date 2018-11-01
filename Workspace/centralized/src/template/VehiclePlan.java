@@ -20,17 +20,23 @@ public class VehiclePlan {
 	public class SingleAction{
 		protected Task task = null;
 		protected int action = -1;
+		protected double load = -1;
 		
 		public SingleAction(Task t, int a) {
 			this.task = t;
 			this.action = a;
+		}
+		public SingleAction(Task t, int a, double l) {
+			this.task = t;
+			this.action = a;
+			this.load = l;
 		}
 	}
 	
 	protected Vehicle vehicle = null;
 	
 	protected ArrayList<SingleAction> 	plan = new ArrayList<SingleAction>();
-	protected ArrayList<Double> 		load = new ArrayList<Double>();
+	//protected ArrayList<Double> 		load = new ArrayList<Double>();
 	
 	public VehiclePlan(Vehicle v) {
 		// Constructor
@@ -43,34 +49,31 @@ public class VehiclePlan {
 		VehiclePlan clone = new VehiclePlan(this.vehicle);
 		
 		for(SingleAction a : this.plan) {
-			clone.add(new SingleAction(a.task,a.action));
-		}
-		for(int i=0; i<this.load.size(); i++) {
-			clone.load.add(this.load.get(i));
+			clone.add(new SingleAction(a.task,a.action,a.load));
 		}
 		return clone;
 	}
 	
 	public void generateLoadTable() {
 		// Populate the ArrayList
+
 		double pred = 0;
-		this.load = new ArrayList<Double>();
-		for(int i=0; i<this.plan.size();i++) {
-			if(this.plan.get(i).action == CentralizedMain.PICKUP) {
-				this.load.add(pred + this.plan.get(i).task.weight);
-				pred = pred + this.plan.get(i).task.weight;
+		for(SingleAction a : this.plan) {
+			if(a.action == CentralizedMain.PICKUP) {
+				a.load = pred + a.task.weight;
+				pred = a.load;
 			}
-			else {
-				this.load.add(pred - this.plan.get(i).task.weight);
-				pred = pred - this.plan.get(i).task.weight;
+			else if(a.action == CentralizedMain.DELIVER){
+				a.load = pred - a.task.weight;
+				pred = a.load;
 			}
 		}
 	}
 	
 	
 	public boolean hasOverload() {
-		for(int i=0; i<this.load.size();i++) {
-			if(this.load.get(i) > this.vehicle.capacity())
+		for(SingleAction a : this.plan) {
+			if(a.load > this.vehicle.capacity())
 				return true;
 		}
 		return false;
