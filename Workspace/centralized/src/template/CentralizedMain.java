@@ -124,15 +124,54 @@ public class CentralizedMain implements CentralizedBehavior {
     
     private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
     	double randomChoose = Math.random();
+    	boolean succes = false;
     	if(randomChoose >0.5) {
-    		this.changingVehicle();
+    		succes = this.changingVehicle();
     	}else {
-    		//this.changingOrder();
+    		succes = this.changingOrder();
     	}
-    	return false;
+    	return succes;
     }
     
-    private boolean changingVehicle() {
+    private boolean changingOrder() {
+		boolean succes = false; 
+		
+		//Randomly choose a vehicle
+    	int indexVehicleChange = (int) Math.random()*globalPlan.size();
+    	VehiclePlan vToChange = globalPlan.get(indexVehicleChange);
+    	
+    	// Randomly pickup a task in the vehicle
+    	int indexTaskToGet = (int) Math.random()*vToChange.plan.size();
+    	SingleAction actionToPick = vToChange.plan.get(indexTaskToGet);
+    	
+    	SingleAction ap = null;
+    	SingleAction ad = null;
+    	
+    	//Separate case if the SingleAction picked is pickup or delivery.
+		if(actionToPick.action == CentralizedMain.PICKUP) {
+			ap = actionToPick;
+			for(int i=0; i< vToChange.plan.size();i++) {
+				if(vToChange.plan.get(i).task.id==ap.task.id) {
+					ad=vToChange.plan.get(i);
+					break;
+				}
+			}
+    	}else {
+    		ad=actionToPick;
+    		for(int i=0; i< vToChange.plan.size();i++) {
+				if(vToChange.plan.get(i).task.id==ad.task.id) {
+					ap=vToChange.plan.get(i);
+					break;
+				}
+			}
+      	}
+		
+		vToChange.removePair(ap, ad);
+    	succes = vToChange.addPairRandom(ap, ad);
+    	
+    	return succes;
+	}
+	private boolean changingVehicle() {
     	boolean succes = false;
     	//Randomly choose to vehicle to exchange tasks
     	
@@ -147,7 +186,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	VehiclePlan vToSet = globalPlan.get(indexVehicleToSet);
     	VehiclePlan vToGet = globalPlan.get(indexVehicleToGet);
     	
-    	// Randomly pickup a task in the vehicle to set
+    	// Randomly pickup a task in the vehicle to get
     	int indexTaskToGet = (int) Math.random()*vToGet.plan.size();
     	SingleAction actionToPick = vToGet.plan.get(indexTaskToGet);
     	
@@ -173,8 +212,8 @@ public class CentralizedMain implements CentralizedBehavior {
 			}
       	}
     	
-    	succes = globalPlan.get(indexVehicleToSet).addPairRandom(ap, ad);
-		globalPlan.get(indexVehicleToGet).removePair(ap, ad);
+    	succes = vToSet.addPairRandom(ap, ad);
+    	vToGet.removePair(ap, ad);
 		
 		return succes;
 	}
@@ -243,9 +282,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	do {
 	    		findSolution = this.searchNeighbor(oldPlan);
 	    		iter++;
-	    	} while(!findSolution || iter <1000);
-	    	
-	    	
+	    	} while(!findSolution || iter <5);
 	    	
 	    	if(!findSolution) {
 	    		System.out.println("NO valid neighboring solution found");
