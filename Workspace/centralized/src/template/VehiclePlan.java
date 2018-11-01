@@ -81,13 +81,16 @@ public class VehiclePlan {
 	}
 	
 	public void add(SingleAction a) {
+
 		this.plan.add(a);
 	}
 	public void add(int i,SingleAction a) {
 		this.plan.add(i,a);
+		this.generateLoadTable();
 	}
 	public void remove(SingleAction a) {
 		this.plan.remove(a);
+		this.generateLoadTable();
 	}
 	public void addPairInit(SingleAction ap,SingleAction ad) {
 		// Pickup everything first then deliver by adding new pairs in the middle of the schedule
@@ -100,11 +103,18 @@ public class VehiclePlan {
     		this.plan.add(ad);
 		}
 	}
-	public void addPairRandom(SingleAction ap,SingleAction ad) {
+	public boolean addPairRandom(SingleAction ap, SingleAction ad) {
 		// TODO
+		boolean succes = false;
+		int indexToPlacePickup = (int) Math.random()*this.plan.size();
+		this.plan.add(indexToPlacePickup, ap);
+		int indexToPlaceDeliver = (int)(Math.random() * ((this.plan.size()+1 - indexToPlacePickup) + 1)) + indexToPlacePickup;
+		this.plan.add(indexToPlaceDeliver, ad);		
+		return succes;
 	}
 	public void removePair(SingleAction ap,SingleAction ad) {
 		// TODO
+		this.generateLoadTable();
 	}
 	public void addTask(Task t) {
 		// TODO
