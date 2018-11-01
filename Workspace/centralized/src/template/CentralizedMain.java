@@ -52,8 +52,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	int num_tasks = 0;
     	for(VehiclePlan plan_vehicle : plan_global) {
     		// Check if the load never exceeds the capacity
-    		for(int i=0; i<plan_vehicle.load.size();i++) {
-    			if(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity())
+    		for(int i=0; i<plan_vehicle.plan.size();i++) {
+    			if(plan_vehicle.plan.get(i).load > plan_vehicle.vehicle.capacity())
     				return false;
     		}
     		num_tasks += plan_vehicle.plan.size()/2;
@@ -71,9 +71,9 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	// Try and make an invalid plan (capacity overshoot) valid by changing the order of actions
 	    	for(VehiclePlan plan_vehicle : plan_global) {
 	    		// Check if the load ever exceeds the capacity
-	    		for(int i=0; i<plan_vehicle.load.size();i++) {
-	    			if(plan_vehicle.load.get(i) > plan_vehicle.vehicle.capacity()) {
-	    				System.out.println("Issue in plan " + plan_vehicle);
+	    		for(int i=0; i<plan_vehicle.plan.size();i++) {
+	    			if(plan_vehicle.plan.get(i).load > plan_vehicle.vehicle.capacity()) {
+	    				System.out.println("Issue in plan " + plan_vehicle + "");
 	    				// Deliver tasks before picking the one causing an issue
 	    				
 	    				// Pop the SingleAction that creates an overload
