@@ -48,11 +48,34 @@ public class CentralizedMain implements CentralizedBehavior {
     private ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
     
     /************** Validate a global plan **************/
+    private boolean hasBeenPicked(ArrayList<Integer> IDs, int id) {
+    	if(IDs.size() == 0){
+    		return false;
+    	}
+    	for(int i=0; i<IDs.size(); i++) {
+    		if(IDs.get(i) == id) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
     private boolean isGlobalPlanValid(ArrayList<VehiclePlan> plan_global) {
     	int num_tasks = 0;
+    	ArrayList<Integer> IDs = new ArrayList<Integer>();
     	for(VehiclePlan plan_vehicle : plan_global) {
     		// Check if the load never exceeds the capacity
     		for(int i=0; i<plan_vehicle.plan.size();i++) {
+    			// Verify that a task that needs to be delivered was picked up first
+    			if(plan_vehicle.plan.get(i).action == PICKUP) {
+    				IDs.add(plan_vehicle.plan.get(i).task.id);
+    			}
+    			else if(plan_vehicle.plan.get(i).action == DELIVER) {
+    				if(!hasBeenPicked(IDs,plan_vehicle.plan.get(i).task.id)) {
+    					System.out.println("Error: a delivery occurs before a pickup action.");
+    					return false;
+    				}
+    			}
+    			// Check if an overload occurred
     			if(plan_vehicle.plan.get(i).load > plan_vehicle.vehicle.capacity())
     				return false;
     		}
@@ -65,35 +88,46 @@ public class CentralizedMain implements CentralizedBehavior {
     		return true;
     }
     private void validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
-    	System.out.println("Validating a plan!");
+    	
     	while(!isGlobalPlanValid(plan_global)) {
-    		
+    		System.out.println("Adjusting a plan!");
 	    	// Try and make an invalid plan (capacity overshoot) valid by changing the order of actions
 	    	for(VehiclePlan plan_vehicle : plan_global) {
 	    		// Check if the load ever exceeds the capacity
 	    		for(int i=0; i<plan_vehicle.plan.size();i++) {
 	    			if(plan_vehicle.plan.get(i).load > plan_vehicle.vehicle.capacity()) {
-	    				System.out.println("Issue in plan " + plan_vehicle + "");
+	    				//System.out.println("Issue in plan " + plan_vehicle + " overload = " + 
+	    						//plan_vehicle.plan.get(i).load + " at " + i);
 	    				// Deliver tasks before picking the one causing an issue
 	    				
-	    				// Pop the SingleAction that creates an overload
+	    				// Get the SingleAction that creates an overload
 	    				SingleAction ap = plan_vehicle.plan.get(i);
 	    				SingleAction ad = null;
-	    				plan_vehicle.plan.remove(i);
+	    				
 	    				
 	    				// Find its corresponding deliver action
-	    				for(int j=i; j<plan_vehicle.plan.size();j++) {
-	    					if(plan_vehicle.plan.get(j).task.id == ap.task.id) {
+	    				for(int j=0; j<plan_vehicle.plan.size();j++) {
+	    					if(plan_vehicle.plan.get(j).task.id == ap.task.id && 
+	    							plan_vehicle.plan.get(j).action == DELIVER) {
 	    						ad = plan_vehicle.plan.get(j);
 	    						plan_vehicle.plan.remove(j);
+	    						plan_vehicle.plan.remove(i);
+	    						
+	    						// Move them both at the end of the plan
+	    	    				plan_vehicle.plan.add(ap);
+	    	    				plan_vehicle.plan.add(ad);
+
+	    	    				/*for(SingleAction sa : plan_vehicle.plan) {
+			    	        		System.out.print(sa.action);
+			    	        	}
+			    	        	System.out.println(" ");*/
+	    	    				break;
 	    					}
 	    				}
 	    				
-	    				// Move them both at the end of the plan
-	    				plan_vehicle.plan.add(ap);
-	    				plan_vehicle.plan.add(ad);
-	    				
 	    				plan_vehicle.generateLoadTable();
+	    				
+	    				i--; // The overloaded task was moved, don't skip the next one!
 	    			}
 	    		}
 	    	}
@@ -123,13 +157,14 @@ public class CentralizedMain implements CentralizedBehavior {
     
     private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
     	double randomChoose = Math.random();
-    	boolean succes = false;
+     	boolean succes = false; 
     	if(randomChoose >0.5) {
-    		succes = this.changingVehicle();
-    	}else {
-    		succes = this.changingOrder();
+     		succes = this.changingVehicle(); 
+     	}else {
+     		succes = this.changingOrder(); 
+    		this.changingOrder();
     	}
-    	return succes;
+     	return succes; 
     }
     
     private boolean changingOrder() {
@@ -170,7 +205,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	
     	return succes;
 	}
-	private boolean changingVehicle() {
+    
+    private boolean changingVehicle() {
     	boolean succes = false;
     	//Randomly choose to vehicle to exchange tasks
     	
@@ -185,7 +221,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	VehiclePlan vToSet = globalPlan.get(indexVehicleToSet);
     	VehiclePlan vToGet = globalPlan.get(indexVehicleToGet);
     	
-    	// Randomly pickup a task in the vehicle to get
+     	// Randomly pickup a task in the vehicle to get 
     	int indexTaskToGet = (int) Math.random()*vToGet.plan.size();
     	SingleAction actionToPick = vToGet.plan.get(indexTaskToGet);
     	
@@ -211,9 +247,8 @@ public class CentralizedMain implements CentralizedBehavior {
 			}
       	}
     	
-    	succes = vToSet.addPairRandom(ap, ad);
+		succes = vToSet.addPairRandom(ap, ad);
     	vToGet.removePair(ap, ad);
-		
 		return succes;
 	}
 	/************** Compute the cost of the current plan **************/
@@ -282,6 +317,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    		findSolution = this.searchNeighbor(oldPlan);
 	    		iter++;
 	    	} while(!findSolution && iter <5);
+
 	    	
 	    	if(!findSolution) {
 	    		System.out.println("NO valid neighboring solution found");
@@ -386,9 +422,8 @@ public class CentralizedMain implements CentralizedBehavior {
        
         // Initialize the global plan (each VehiclePlan is created)
         initGlobalPlan(clusters);
-
-        if(!isGlobalPlanValid(this.globalPlan))
-        	validateGlobalPlan(this.globalPlan);
+        
+        validateGlobalPlan(this.globalPlan);
         
         
         // Watch out! Order of the plans matters! And don't forget to include empty plans
