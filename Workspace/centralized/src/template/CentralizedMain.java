@@ -88,22 +88,20 @@ public class CentralizedMain implements CentralizedBehavior {
     		return true;
     }
     private void validateGlobalPlan(ArrayList<VehiclePlan> plan_global) {
-    	System.out.println("Validating a plan!");
+    	
     	while(!isGlobalPlanValid(plan_global)) {
-    		
+    		System.out.println("Adjusting a plan!");
 	    	// Try and make an invalid plan (capacity overshoot) valid by changing the order of actions
 	    	for(VehiclePlan plan_vehicle : plan_global) {
 	    		// Check if the load ever exceeds the capacity
 	    		for(int i=0; i<plan_vehicle.plan.size();i++) {
 	    			if(plan_vehicle.plan.get(i).load > plan_vehicle.vehicle.capacity()) {
-	    				System.out.println("Issue in plan " + plan_vehicle + " overload = " + 
-	    						plan_vehicle.plan.get(i).load + " at " + i);
+	    				//System.out.println("Issue in plan " + plan_vehicle + " overload = " + 
+	    						//plan_vehicle.plan.get(i).load + " at " + i);
 	    				// Deliver tasks before picking the one causing an issue
 	    				
 	    				// Get the SingleAction that creates an overload
 	    				SingleAction ap = plan_vehicle.plan.get(i);
-	    				if(ap.action == DELIVER)
-	    					System.out.println("ap is DELIVER!!");
 	    				SingleAction ad = null;
 	    				
 	    				
@@ -119,17 +117,17 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	    				plan_vehicle.plan.add(ap);
 	    	    				plan_vehicle.plan.add(ad);
 
-	    	    				for(SingleAction sa : plan_vehicle.plan) {
+	    	    				/*for(SingleAction sa : plan_vehicle.plan) {
 			    	        		System.out.print(sa.action);
 			    	        	}
-			    	        	System.out.println(" ");
+			    	        	System.out.println(" ");*/
 	    	    				break;
 	    					}
 	    				}
 	    				
 	    				plan_vehicle.generateLoadTable();
 	    				
-	    				i--;
+	    				i--; // The overloaded task was moved, don't skip the next one!
 	    			}
 	    		}
 	    	}
@@ -376,9 +374,7 @@ public class CentralizedMain implements CentralizedBehavior {
         // Initialize the global plan (each VehiclePlan is created)
         initGlobalPlan(clusters);
         
-
-        if(!isGlobalPlanValid(this.globalPlan))
-        	validateGlobalPlan(this.globalPlan);
+        validateGlobalPlan(this.globalPlan);
         
         
         // Watch out! Order of the plans matters! And don't forget to include empty plans
