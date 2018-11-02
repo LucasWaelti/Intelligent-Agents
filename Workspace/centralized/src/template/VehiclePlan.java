@@ -36,7 +36,6 @@ public class VehiclePlan {
 	protected Vehicle vehicle = null;
 	
 	protected ArrayList<SingleAction> 	plan = new ArrayList<SingleAction>();
-	//protected ArrayList<Double> 		load = new ArrayList<Double>();
 	
 	public VehiclePlan(Vehicle v) {
 		// Constructor

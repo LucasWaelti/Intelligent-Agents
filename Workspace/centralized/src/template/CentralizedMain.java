@@ -121,7 +121,6 @@ public class CentralizedMain implements CentralizedBehavior {
     }
 
     
-    
     private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
     	double randomChoose = Math.random();
     	boolean succes = false;
@@ -282,7 +281,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	do {
 	    		findSolution = this.searchNeighbor(oldPlan);
 	    		iter++;
-	    	} while(!findSolution || iter <5);
+	    	} while(!findSolution && iter <5);
 	    	
 	    	if(!findSolution) {
 	    		System.out.println("NO valid neighboring solution found");
@@ -297,7 +296,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	oldCost=newCost;
 	    	}
     	
-        } while(System.currentTimeMillis()-time_start < CentralizedMain.timeout_plan - 1000) ;
+        } while(System.currentTimeMillis()-time_start < 2000) ;
     }
     
     
@@ -327,11 +326,21 @@ public class CentralizedMain implements CentralizedBehavior {
         return plan;
     }
     
-    private void naivePlanV2(Vehicle vehicle, TaskSet tasks) {
-        City current = vehicle.getCurrentCity();
-        this.globalPlan.add(new VehiclePlan(vehicle));
+    private void naivePlanV2(List<Vehicle> vehicles, TaskSet tasks) {
+        
+        this.globalPlan.add(new VehiclePlan(vehicles.get(0)));
+        int v = 0, v_counter =0;
+        int changeVehicle = (int) tasks.size()/vehicles.size();
         for (Task t : tasks) {
-        	globalPlan.get(0).addPairInit(globalPlan.get(0).new SingleAction(t,CentralizedMain.PICKUP),globalPlan.get(0).new SingleAction(t,CentralizedMain.DELIVER));           
+        	globalPlan.get(v).add(globalPlan.get(v).new SingleAction(t,CentralizedMain.PICKUP));
+        	globalPlan.get(v).add(globalPlan.get(v).new SingleAction(t,CentralizedMain.DELIVER)); 
+        	v_counter++;
+        	if(v_counter > changeVehicle) {
+                this.globalPlan.add(new VehiclePlan(vehicles.get(v)));
+        		v++;
+        		v_counter = 0;
+        	}
+        	
         }
     }
     
@@ -371,6 +380,7 @@ public class CentralizedMain implements CentralizedBehavior {
         ClusterGenerator clusterGenerator = new ClusterGenerator();
         ArrayList<TasksCluster> clusters = clusterGenerator.clusterTasks(vehicles,tasks);
         // Assign clusters to each vehicle (subdivide clusters if required)
+        /*
         clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
         clusterGenerator.displayCluster(clusters);
        
@@ -399,11 +409,12 @@ public class CentralizedMain implements CentralizedBehavior {
         }
         
         
-        /*
-        naivePlanV2(vehicles.get(0), tasks);
+        */
+        naivePlanV2(vehicles, tasks);
         System.out.println(globalPlan);
-
-        computeCost();
+        this.slSearch();
+        
+        
         Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
 
         List<Plan> plans = new ArrayList<Plan>();
@@ -411,8 +422,7 @@ public class CentralizedMain implements CentralizedBehavior {
         while (plans.size() < vehicles.size()) {
             plans.add(Plan.EMPTY);
         }
-        
-        */           
+                  
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
         System.out.println("The plan was generated in "+duration+" milliseconds.");
