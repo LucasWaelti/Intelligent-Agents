@@ -173,7 +173,11 @@ public class CentralizedMain implements CentralizedBehavior {
     	int indexVehicleChange = (int) (Math.random()*globalPlan.size());
     	VehiclePlan vToChange = globalPlan.get(indexVehicleChange);
     	
-    	// Randomly pickup a task in the vehicle
+    	
+    	// Randomly pickup a task in the vehicle if the vehicle plan is not empty
+       	if(vToChange.plan.size()==0)
+    		return false;
+       	
     	int indexTaskToGet = (int) (Math.random()*vToChange.plan.size());
     	SingleAction actionToPick = vToChange.plan.get(indexTaskToGet);
     	
@@ -220,7 +224,10 @@ public class CentralizedMain implements CentralizedBehavior {
     	VehiclePlan vToSet = globalPlan.get(indexVehicleToSet);
     	VehiclePlan vToGet = globalPlan.get(indexVehicleToGet);
     	
-     	// Randomly pickup a task in the vehicle to get 
+     	// Randomly pickup a task in the vehicle to get, if the vehicle plan is not empty
+    	if(vToGet.plan.size()==0)
+    		return false;
+    	
     	int indexTaskToGet = (int) (Math.random()*vToGet.plan.size());
     	SingleAction actionToPick = vToGet.plan.get(indexTaskToGet);
     	
