@@ -162,7 +162,6 @@ public class CentralizedMain implements CentralizedBehavior {
      		succes = this.changingVehicle(); 
      	}else {
      		succes = this.changingOrder(); 
-    		this.changingOrder();
     	}
      	return succes; 
     }
@@ -171,11 +170,11 @@ public class CentralizedMain implements CentralizedBehavior {
 		boolean succes = false; 
 		
 		//Randomly choose a vehicle
-    	int indexVehicleChange = (int) Math.random()*globalPlan.size();
+    	int indexVehicleChange = (int) (Math.random()*globalPlan.size());
     	VehiclePlan vToChange = globalPlan.get(indexVehicleChange);
     	
     	// Randomly pickup a task in the vehicle
-    	int indexTaskToGet = (int) Math.random()*vToChange.plan.size();
+    	int indexTaskToGet = (int) (Math.random()*vToChange.plan.size());
     	SingleAction actionToPick = vToChange.plan.get(indexTaskToGet);
     	
     	SingleAction ap = null;
@@ -210,19 +209,19 @@ public class CentralizedMain implements CentralizedBehavior {
     	boolean succes = false;
     	//Randomly choose to vehicle to exchange tasks
     	
-    	int indexVehicleToGet = (int) Math.random()*globalPlan.size();
-    	int indexVehicleToSet = (int) Math.random()*globalPlan.size();
+    	int indexVehicleToGet = (int) (Math.random()*globalPlan.size());
+    	int indexVehicleToSet = (int) (Math.random()*globalPlan.size());
     	
     	//Get 2 diferents indices.
     	while(indexVehicleToSet==indexVehicleToGet) {
-    		indexVehicleToSet = (int) Math.random()*globalPlan.size();
+    		indexVehicleToSet = (int) (Math.random()*globalPlan.size());
     	}
     	
     	VehiclePlan vToSet = globalPlan.get(indexVehicleToSet);
     	VehiclePlan vToGet = globalPlan.get(indexVehicleToGet);
     	
      	// Randomly pickup a task in the vehicle to get 
-    	int indexTaskToGet = (int) Math.random()*vToGet.plan.size();
+    	int indexTaskToGet = (int) (Math.random()*vToGet.plan.size());
     	SingleAction actionToPick = vToGet.plan.get(indexTaskToGet);
     	
     	SingleAction ap = null;
@@ -299,6 +298,11 @@ public class CentralizedMain implements CentralizedBehavior {
     	
         long time_start = System.currentTimeMillis();
         
+        
+        double newCost = 0;
+    	double oldCost = 0; 
+    	double learningRate=1;
+    	
         do {
         	
 	    	//Create a copy of the current plan. Used to compare new and old plan. 
@@ -308,10 +312,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	int iter = 0;
 	    	boolean findSolution = false;
 	    	
-	    	double newCost = 0;
-	    	double oldCost = 0; 
-	    	double learningRate=1;
-	    	
+	    	    	
 	    	//Search for solutions close to the current plan. Do while a valid new plan is found. 
 	    	do {
 	    		findSolution = this.searchNeighbor(oldPlan);
@@ -332,7 +333,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	oldCost=newCost;
 	    	}
     	
-        } while(System.currentTimeMillis()-time_start < 2000) ;
+        } while(System.currentTimeMillis()-time_start < this.timeout_plan) ;
     }
     
     
@@ -416,7 +417,6 @@ public class CentralizedMain implements CentralizedBehavior {
         ClusterGenerator clusterGenerator = new ClusterGenerator();
         ArrayList<TasksCluster> clusters = clusterGenerator.clusterTasks(vehicles,tasks);
         // Assign clusters to each vehicle (subdivide clusters if required)
-        /*
         clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
         clusterGenerator.displayCluster(clusters);
        
@@ -441,10 +441,10 @@ public class CentralizedMain implements CentralizedBehavior {
         	else
         		plans.add(Plan.EMPTY);
         	plan_i = null;
-        }
+        } 
         
-        
-        */
+        this.slSearch();
+        /*
         naivePlanV2(vehicles, tasks);
         System.out.println(globalPlan);
         this.slSearch();
@@ -457,7 +457,8 @@ public class CentralizedMain implements CentralizedBehavior {
         while (plans.size() < vehicles.size()) {
             plans.add(Plan.EMPTY);
         }
-                  
+        */
+        
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
         System.out.println("The plan was generated in "+duration+" milliseconds.");

@@ -105,13 +105,14 @@ public class VehiclePlan {
 		}
 	}
 	public boolean addPairRandom(SingleAction ap, SingleAction ad) {
-		// TODO
 		boolean succes = false;
-		int indexToPlacePickup = (int) Math.random()*this.plan.size();
+		int indexToPlacePickup = (int) (Math.random()*this.plan.size());
 		this.plan.add(indexToPlacePickup, ap);
-		int indexToPlaceDeliver = (int)(Math.random() * ((this.plan.size()+1 - indexToPlacePickup) + 1)) + indexToPlacePickup;
-		this.plan.add(indexToPlaceDeliver, ad);		
-		return succes;
+			
+		int indexToPlaceDeliver = (int) (Math.random()*(this.plan.size() - (indexToPlacePickup+1))) + indexToPlacePickup+1;
+		this.plan.add(indexToPlaceDeliver, ad);
+		succes = hasOverload();
+		return !succes;
 	}
 	public void removePair(SingleAction ap,SingleAction ad) {
 		this.remove(ap);
