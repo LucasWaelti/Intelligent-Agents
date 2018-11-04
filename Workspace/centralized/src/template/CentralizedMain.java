@@ -152,7 +152,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	return newPlan;
     }
     
-    /************** Initialize the global plan from clusters info **************/
+    /************** Initialise the global plan from clusters info **************/
     private void initGlobalPlan(ArrayList<TasksCluster> clusters){
     	int i = 0;
         for(TasksCluster c : clusters) {
@@ -165,21 +165,25 @@ public class CentralizedMain implements CentralizedBehavior {
         }
     }
 
-    
+    private boolean swap = false;
     private boolean searchNeighbor() {
     	double randomChoose = Math.random();
-     	boolean succes = false; 
+     	boolean success = false; 
      	// Make a random change
     	if(randomChoose > 0.5) {
-     		succes = this.changingVehicle(); 
+     		success = this.changingVehicle(); 
+     		swap = false;
      	}else {
-     		succes = this.changingOrder(); 
+     		success = this.changingOrder(); 
+     		swap = true;
     	}
+    	if(!success)
+    		return false;
     	// Update the load after change of plan
     	for(VehiclePlan plan : this.globalPlan) {
     		plan.generateLoadTable();
     	}
-     	return succes; 
+     	return isGlobalPlanValid(this.globalPlan); 
     }
     
     private boolean changingOrder() {
@@ -315,12 +319,23 @@ public class CentralizedMain implements CentralizedBehavior {
       
     /************** Stochastic Local Search implementation **************/
     private void cancelLastChange() {
+    	if(!this.globalPlan.get(this.vehicleSetBefore).plan.contains(this.ap) ||
+    			!this.globalPlan.get(this.vehicleSetBefore).plan.contains(this.ad)) {
+	    	this.globalPlan.get(0).plan.contains(ap);
+			this.globalPlan.get(1).plan.contains(ap);
+			this.globalPlan.get(2).plan.contains(ap); //
+			this.globalPlan.get(3).plan.contains(ap);
+			this.globalPlan.get(0).plan.contains(ad);
+			this.globalPlan.get(1).plan.contains(ad);
+			this.globalPlan.get(2).plan.contains(ad); //
+			this.globalPlan.get(3).plan.contains(ad);
+    	}
     	// Remove the two actions that were moved
     	if(!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ap) ||
     			!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ad)) {
     		System.out.println("cancelLastChange error");
+    		
     	}
-    	
     	
     	// Put them back where they originally were taken from
     	if(!this.globalPlan.get(this.vehicleGetBefore).plan.isEmpty()) {
@@ -332,6 +347,10 @@ public class CentralizedMain implements CentralizedBehavior {
     	else {
     		this.globalPlan.get(this.vehicleGetBefore).plan.add(this.ap);
     		this.globalPlan.get(this.vehicleGetBefore).plan.add(this.ad);
+    	}
+    	// Update load table back to its previous state
+    	for(VehiclePlan plan : this.globalPlan) {
+    		plan.generateLoadTable();
     	}
     }
     private void slSearch() {
@@ -371,7 +390,7 @@ public class CentralizedMain implements CentralizedBehavior {
 
 	    	}
     	
-        }while(System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
+        }while(true);//System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
     }
     
     
