@@ -362,7 +362,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.99999;
+    	double learningRate = 0.9999;
     	double temperature  = oldCost;
     	
         do {
@@ -371,7 +371,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	if(this.searchNeighbor() && !isGlobalPlanValid(this.globalPlan)) {
 	    		cancelLastChange();
 	    	}
-	    	else {
+	    	else if(this.searchNeighbor() && isGlobalPlanValid(this.globalPlan)){
 	        	newCost = this.computeCost();
 	        	double exponential =  Math.exp((oldCost-newCost)/(1+temperature));
 	        	if(newCost < oldCost || Math.random() < exponential) {
@@ -384,7 +384,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	}
 
 	        	temperature *= learningRate;
-	        	//System.out.println(computeCost() + " - " + System.currentTimeMillis());
+	        	System.out.println("Cost: " + computeCost());
 	        	//System.out.println("old cost" + oldCost +"new cost"+newCost);
 
 	    	}
