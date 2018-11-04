@@ -43,6 +43,7 @@ public class VehiclePlan {
 		return;
 	}
 	
+	@Override
 	public VehiclePlan clone() {
 		// Returns a copy of itself
 		VehiclePlan clone = new VehiclePlan(this.vehicle);

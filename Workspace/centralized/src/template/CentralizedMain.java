@@ -25,7 +25,7 @@ import template.VehiclePlan;
 import template.VehiclePlan.SingleAction;
 
 
-@SuppressWarnings("unused")
+//@SuppressWarnings("unused")
 
 public class CentralizedMain implements CentralizedBehavior {
 	
@@ -37,8 +37,8 @@ public class CentralizedMain implements CentralizedBehavior {
     private TaskDistribution distribution;
     private TaskSet taskSet;
     private Agent agent;
-    protected static long timeout_setup;
-    protected static long timeout_plan;
+    protected long timeout_setup;
+    protected long timeout_plan;
     
     protected TaskSet getTaskSet() {
     	return this.taskSet;
@@ -49,6 +49,7 @@ public class CentralizedMain implements CentralizedBehavior {
     
     /************** Validate a global plan **************/
     private boolean hasBeenPicked(ArrayList<Integer> IDs, int id) {
+    	// Check if a task was picked up (before trying delivering it)
     	if(IDs.size() == 0){
     		return false;
     	}
@@ -133,6 +134,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	}
     	}
     }
+   
     /************** Clone a global plan **************/
     private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
     	ArrayList<VehiclePlan> newPlan = new ArrayList<VehiclePlan>();
@@ -141,6 +143,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	}
     	return newPlan;
     }
+    
     /************** Initialize the global plan from clusters info **************/
     private void initGlobalPlan(ArrayList<TasksCluster> clusters){
     	int i = 0;
@@ -155,10 +158,10 @@ public class CentralizedMain implements CentralizedBehavior {
     }
 
     
-    private boolean searchNeighbor(ArrayList<VehiclePlan> oldPlan) {
+    private boolean searchNeighbor() {
     	double randomChoose = Math.random();
      	boolean succes = false; 
-    	if(randomChoose >0.5) {
+    	if(randomChoose > 0.5) {
      		succes = this.changingVehicle(); 
      	}else {
      		succes = this.changingOrder(); 
@@ -211,12 +214,12 @@ public class CentralizedMain implements CentralizedBehavior {
     
     private boolean changingVehicle() {
     	boolean succes = false;
-    	//Randomly choose to vehicle to exchange tasks
+    	//Randomly choose two vehicle to exchange tasks
     	
     	int indexVehicleToGet = (int) (Math.random()*globalPlan.size());
     	int indexVehicleToSet = (int) (Math.random()*globalPlan.size());
     	
-    	//Get 2 diferents indices.
+    	//Get 2 different indices.
     	while(indexVehicleToSet==indexVehicleToGet) {
     		indexVehicleToSet = (int) (Math.random()*globalPlan.size());
     	}
@@ -262,53 +265,45 @@ public class CentralizedMain implements CentralizedBehavior {
     	double cost = 0.0;
     	for(int v = 0; v< this.globalPlan.size(); v++){
     		
-			//Clarify coding
-    		VehiclePlan currentVehicle = this.globalPlan.get(v);
+			//For each vehicle plan
+    		VehiclePlan currentVehiclePlan = this.globalPlan.get(v);
 			
-			//Give a track of the vehicle position. Will be updated after each action
-			City vehicleCity = currentVehicle.vehicle.getCurrentCity();
+			//Get the starting city of the vehicle for the given plan
+			City vehicleCity = currentVehiclePlan.vehicle.getCurrentCity();
 			
-			for(int t = 0; t< currentVehicle.plan.size(); t++) {
+			for(int t = 0; t< currentVehiclePlan.plan.size(); t++) {
+				//For each action of the vehicle plan 
+				VehiclePlan.SingleAction actionToReach = currentVehiclePlan.plan.get(t);
 				
-				//Clarify coding
-				VehiclePlan.SingleAction currentAction = currentVehicle.plan.get(t);
-				
-				// First action -> always pickup
-        		if(t == 0) {
-        			cost += vehicleCity.distanceTo(currentAction.task.pickupCity)
-        				*currentVehicle.vehicle.costPerKm();
-        			vehicleCity=currentAction.task.pickupCity;
-        		}
-        		else {
-        			
-        			//Clarify coding
-        			VehiclePlan.SingleAction previousAction = currentVehicle.plan.get(t-1);
-    				
-        			if(currentAction.action== CentralizedMain.PICKUP) {
-        				cost += vehicleCity.distanceTo(currentAction.task.pickupCity)*currentVehicle.vehicle.costPerKm();
-            			vehicleCity=currentAction.task.pickupCity;
-        			}
-        			else if (currentAction.action== CentralizedMain.DELIVER) {
-        				cost += vehicleCity.distanceTo(currentAction.task.deliveryCity)*currentVehicle.vehicle.costPerKm();
-        						//+ currentAction.task.reward;
-            			vehicleCity=currentAction.task.deliveryCity;
-        			}    				
-        		}
+    			if(actionToReach.action== CentralizedMain.PICKUP) {
+    				cost += vehicleCity.distanceTo(actionToReach.task.pickupCity)
+    						*currentVehiclePlan.vehicle.costPerKm();
+        			vehicleCity=actionToReach.task.pickupCity;
+    			}
+    			else if (actionToReach.action== CentralizedMain.DELIVER) {
+    				cost += vehicleCity.distanceTo(actionToReach.task.deliveryCity)
+    						*currentVehiclePlan.vehicle.costPerKm();
+        			vehicleCity=actionToReach.task.deliveryCity;
+    			}    				
     		}
     	}
-    	System.out.println(cost);
+    	//System.out.println(cost);
     	return cost;
     }
       
+    /************** Stochastic Local Search implementation **************/
     private void slSearch() {
-    	// TODO - update all vehicle plans through Stochastic Local Search
+    	// update all vehicle plans through Stochastic Local Search
     	
         long time_start = System.currentTimeMillis();
         
         
         double newCost = 0;
     	double oldCost = 0; 
-    	double learningRate=1;
+    	
+    	// Simulated Annealing parameters
+    	double learningRate=0.999;
+    	double Temperature = 1000;
     	
         do {
         	
@@ -317,27 +312,29 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	
 	    	
 	    	int iter = 0;
-	    	boolean findSolution = false;
+	    	boolean solutionFound = false;
 	    	
 	    	    	
 	    	//Search for solutions close to the current plan. Do while a valid new plan is found. 
 	    	do {
-	    		findSolution = this.searchNeighbor(oldPlan);
+	    		solutionFound = this.searchNeighbor();
 	    		iter++;
-	    	} while(!findSolution && iter <5);
+	    	} while(!solutionFound && iter <5);
 
 	    	
-	    	if(!findSolution) {
-	    		System.out.println("NO valid neighboring solution found");
+	    	if(!solutionFound) {
+	    		//System.out.println("NO valid neighboring solution found");
 	    		globalPlan = oldPlan;
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
-	        	if(Math.random() >= Math.exp((oldCost-newCost)/learningRate)) {        		
+	        	if(Math.random() >= Math.exp((oldCost-newCost)/Temperature)) {
 	        		// We don't keep the new plan, even if it might be better
 	        		globalPlan=oldPlan;
 	        	}
 	        	oldCost=newCost;
+	        	Temperature = learningRate*Temperature;
+	        	System.out.println(computeCost());
 	    	}
     	
         } while(System.currentTimeMillis()-time_start < this.timeout_plan) ;
@@ -427,20 +424,23 @@ public class CentralizedMain implements CentralizedBehavior {
         clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
         clusterGenerator.displayCluster(clusters);
        
-        // Initialize the global plan (each VehiclePlan is created)
+        // Initialize the global plan (each VehiclePlan is created) and make it feasible
         initGlobalPlan(clusters);
-        
         validateGlobalPlan(this.globalPlan);
         
+        // Stochastic Local Search in solution space
+        this.slSearch();
         
-        // Watch out! Order of the plans matters! And don't forget to include empty plans
+        // Generate the Logist plans for each vehicle. 
+        // Order of the plans matters! And don't forget to include empty plans
         List<Plan> plans = new ArrayList<Plan>();
         VehiclePlan plan_i = null;
         for(int i=0; i<vehicles.size();i++) {
         	// Find the right vehicle's plan
         	for(int j=0; j<this.globalPlan.size();j++) {
-        		if(this.globalPlan.get(j).vehicle.id() == i) {
+        		if(this.globalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
         			plan_i = this.globalPlan.get(j);
+        			break;
         		}
         	}
         	if(plan_i != null)
@@ -450,7 +450,7 @@ public class CentralizedMain implements CentralizedBehavior {
         	plan_i = null;
         } 
         
-        this.slSearch();
+        
         /*
         naivePlanV2(vehicles, tasks);
         System.out.println(globalPlan);
