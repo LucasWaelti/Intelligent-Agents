@@ -40,6 +40,13 @@ public class CentralizedMain implements CentralizedBehavior {
     protected long timeout_setup;
     protected long timeout_plan;
     
+    private int vehicleGetBefore = 0;
+    private int vehicleSetBefore = 0;
+    private SingleAction ap = null;
+    private SingleAction ad = null;
+    private int ap_index = -1;
+    private int ad_index = -1;
+    
     protected TaskSet getTaskSet() {
     	return this.taskSet;
     }
@@ -303,6 +310,15 @@ public class CentralizedMain implements CentralizedBehavior {
     }
       
     /************** Stochastic Local Search implementation **************/
+    private void cancelLastChange() {
+    	// Remove the two actions that were moved
+    	this.globalPlan.get(this.vehicleSetBefore).remove(this.ap);
+    	this.globalPlan.get(this.vehicleSetBefore).remove(this.ad);
+    	
+    	// Put them back where they originally were taken from
+    	this.globalPlan.get(this.vehicleGetBefore).add(this.ap_index,this.ap);
+    	this.globalPlan.get(this.vehicleGetBefore).add(this.ad_index,this.ad);
+    }
     private void slSearch() {
     	// update all vehicle plans through Stochastic Local Search
     	
@@ -330,8 +346,8 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
-	        	double exponentielle =  Math.exp((oldCost-newCost)/(1+temperature));
-	        	if(newCost < oldCost || Math.random() < exponentielle) {
+	        	double exponential =  Math.exp((oldCost-newCost)/(1+temperature));
+	        	if(newCost < oldCost || Math.random() < exponential) {
 	        		// Keep new plan!
 	        		oldCost=newCost;
 	        	}

@@ -75,16 +75,6 @@ public class VehiclePlan {
 				//System.out.println("ERROR: negative load");
 			}
 		}
-		
-		boolean	errorNeg = false;
-		//Check negativity
-		for(SingleAction a : this.plan) {
-			if(a.load < 0)
-				errorNeg = true; 
-		}
-		/*if(errorNeg==true)
-			System.out.println("load negativ, error");
-		*/
 	}
 	
 	
