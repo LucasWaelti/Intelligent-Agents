@@ -191,7 +191,8 @@ public class CentralizedMain implements CentralizedBehavior {
 		if(actionToPick.action == CentralizedMain.PICKUP) {
 			ap = actionToPick;
 			for(int i=0; i< vToChange.plan.size();i++) {
-				if(vToChange.plan.get(i).task.id==ap.task.id) {
+				if(vToChange.plan.get(i).task.id==ap.task.id 
+						&& vToChange.plan.get(i).action !=ap.action ) {
 					ad=vToChange.plan.get(i);
 					break;
 				}
@@ -199,7 +200,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	}else {
     		ad=actionToPick;
     		for(int i=0; i< vToChange.plan.size();i++) {
-				if(vToChange.plan.get(i).task.id==ad.task.id) {
+				if(vToChange.plan.get(i).task.id==ad.task.id 
+						&& vToChange.plan.get(i).action !=ad.action ) {
 					ap=vToChange.plan.get(i);
 					break;
 				}
@@ -241,7 +243,8 @@ public class CentralizedMain implements CentralizedBehavior {
 		if(actionToPick.action == CentralizedMain.PICKUP) {
 			ap = actionToPick;
 			for(int i=0; i< vToGet.plan.size();i++) {
-				if(vToGet.plan.get(i).task.id==ap.task.id) {
+				if(vToGet.plan.get(i).task.id==ap.task.id
+						&& vToGet.plan.get(i).action!=ap.action) {
 					ad=vToGet.plan.get(i);
 					break;
 				}
@@ -249,7 +252,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	}else {
     		ad=actionToPick;
     		for(int i=0; i< vToGet.plan.size();i++) {
-				if(vToGet.plan.get(i).task.id==ad.task.id) {
+				if(vToGet.plan.get(i).task.id==ad.task.id
+						&& vToGet.plan.get(i).action!=ad.action) {
 					ap=vToGet.plan.get(i);
 					break;
 				}
@@ -299,11 +303,11 @@ public class CentralizedMain implements CentralizedBehavior {
         
         
         double newCost = 0;
-    	double oldCost = 0; 
+    	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate=0.999;
-    	double Temperature = 1000;
+    	double learningRate=0.9;
+    	double Temperature = 20000;
     	
         do {
         	
@@ -323,21 +327,26 @@ public class CentralizedMain implements CentralizedBehavior {
 
 	    	
 	    	if(!solutionFound) {
-	    		//System.out.println("NO valid neighboring solution found");
+	    		System.out.println("NO valid neighboring solution found");
 	    		globalPlan = oldPlan;
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
-	        	if(Math.random() >= Math.exp((oldCost-newCost)/Temperature)) {
-	        		// We don't keep the new plan, even if it might be better
+	        	double chooseRandom = Math.random();
+	        	double acceptationRate = Math.exp((oldCost-newCost)/Temperature);
+	        	if(chooseRandom < acceptationRate ) {
+		        	oldCost=newCost;
+		        	//System.out.println("new plan");
+	        	}else {
 	        		globalPlan=oldPlan;
+		        	//System.out.println("keep old");
 	        	}
-	        	oldCost=newCost;
 	        	Temperature = learningRate*Temperature;
-	        	System.out.println(computeCost());
+	        	System.out.println("old cost" + oldCost +"new cost"+newCost);
+	        	
 	    	}
     	
-        } while(System.currentTimeMillis()-time_start < this.timeout_plan) ;
+        } while(true);//while(System.currentTimeMillis()-time_start < 30000) ;
     }
     
     
