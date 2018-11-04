@@ -362,21 +362,25 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.9999;
-    	double temperature  = oldCost;
+    	double learningRate = 0.99999;
+    	double temperature  = oldCost; // 60000
+    	boolean changeSuccess = false;
     	
         do {
 	    	oldCost = this.computeCost();
 	    	
-	    	if(this.searchNeighbor() && !isGlobalPlanValid(this.globalPlan)) {
+	    	changeSuccess = this.searchNeighbor();
+	    	
+	    	if(changeSuccess && !isGlobalPlanValid(this.globalPlan)) {
 	    		cancelLastChange();
 	    	}
-	    	else if(this.searchNeighbor() && isGlobalPlanValid(this.globalPlan)){
+	    	else if(changeSuccess && isGlobalPlanValid(this.globalPlan)){
 	        	newCost = this.computeCost();
 	        	double exponential =  Math.exp((oldCost-newCost)/(1+temperature));
 	        	if(newCost < oldCost || Math.random() < exponential) {
 	        		// Keep new plan!
 	        		oldCost=newCost;
+	        		System.out.println("Cost: " + computeCost());
 	        	}
 	        	else {
 	        		// Don't keep the new plan
@@ -384,13 +388,13 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	}
 
 	        	temperature *= learningRate;
-	        	System.out.println("Cost: " + computeCost());
+	        	
 	        	//System.out.println("old cost" + oldCost +"new cost"+newCost);
 
 	    	}
     	
-        }while(System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
-        System.out.println("SLS algorithm terminated.");
+        }while(System.currentTimeMillis()-time_start < 30000);//this.timeout_plan-1000) ;
+        //System.out.println("SLS algorithm terminated.");
     }
     
     
