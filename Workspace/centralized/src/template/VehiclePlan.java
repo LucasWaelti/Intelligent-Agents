@@ -71,6 +71,9 @@ public class VehiclePlan {
 				a.load = pred - a.task.weight;
 				pred = a.load;
 			}
+			if(a.load < 0) {
+				//System.out.println("ERROR: negative load");
+			}
 		}
 		
 		boolean	errorNeg = false;

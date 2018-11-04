@@ -161,10 +161,15 @@ public class CentralizedMain implements CentralizedBehavior {
     private boolean searchNeighbor() {
     	double randomChoose = Math.random();
      	boolean succes = false; 
+     	// Make a random change
     	if(randomChoose > 0.5) {
      		succes = this.changingVehicle(); 
      	}else {
      		succes = this.changingOrder(); 
+    	}
+    	// Update the load after change of plan
+    	for(VehiclePlan plan : this.globalPlan) {
+    		plan.generateLoadTable();
     	}
      	return succes; 
     }
@@ -306,44 +311,37 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate=0.9;
-    	double Temperature = 20000;
+    	double learningRate = 0.999;
+    	double Temperature  = 200;
+
     	
         do {
         	
 	    	//Create a copy of the current plan. Used to compare new and old plan. 
 	    	ArrayList<VehiclePlan> oldPlan = this.cloneGlobalPlan(this.globalPlan);
+	    	oldCost = this.computeCost();
 	    	
-	    	
-	    	int iter = 0;
-	    	boolean solutionFound = false;
-	    	
-	    	    	
-	    	//Search for solutions close to the current plan. Do while a valid new plan is found. 
-	    	do {
-	    		solutionFound = this.searchNeighbor();
-	    		iter++;
-	    	} while(!solutionFound && iter <5);
-
-	    	
-	    	if(!solutionFound) {
-	    		System.out.println("NO valid neighboring solution found");
-	    		globalPlan = oldPlan;
+	    	if(!this.searchNeighbor()) {
+	    		//System.out.println("NO valid neighbouring solution found");
+	    		this.globalPlan = oldPlan;
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
-	        	double chooseRandom = Math.random();
-	        	double acceptationRate = Math.exp((oldCost-newCost)/Temperature);
-	        	if(chooseRandom < acceptationRate ) {
-		        	oldCost=newCost;
-		        	//System.out.println("new plan");
-	        	}else {
+
+	        	if(newCost < oldCost || Math.random() < Math.exp((oldCost-newCost)/Temperature)) {
+	        		// Keep new plan!
+	        		oldCost=newCost;
+	        	}
+	        	else {
+	        		// Don't keep the new plan
 	        		globalPlan=oldPlan;
 		        	//System.out.println("keep old");
 	        	}
-	        	Temperature = learningRate*Temperature;
-	        	System.out.println("old cost" + oldCost +"new cost"+newCost);
-	        	
+
+	        	Temperature *= learningRate;
+	        	System.out.println(computeCost() + " - " + System.currentTimeMillis());
+            System.out.println("old cost" + oldCost +"new cost"+newCost);
+
 	    	}
     	
         } while(true);//while(System.currentTimeMillis()-time_start < 30000) ;
