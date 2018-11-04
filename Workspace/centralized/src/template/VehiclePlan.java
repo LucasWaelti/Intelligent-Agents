@@ -51,6 +51,7 @@ public class VehiclePlan {
 		for(SingleAction a : this.plan) {
 			clone.add(new SingleAction(a.task,a.action,a.load));
 		}
+		clone.generateLoadTable();
 		return clone;
 	}
 	
@@ -58,6 +59,7 @@ public class VehiclePlan {
 		// Update the load in the vehicle after each action
 
 		double pred = 0;
+		//System.out.println(this.plan.size());
 		for(SingleAction a : this.plan) {
 			if(a == null)
 				System.out.println("Null single action!!");
@@ -73,6 +75,16 @@ public class VehiclePlan {
 				//System.out.println("ERROR: negative load");
 			}
 		}
+		
+		boolean	errorNeg = false;
+		//Check negativity
+		for(SingleAction a : this.plan) {
+			if(a.load < 0)
+				errorNeg = true; 
+		}
+		/*if(errorNeg==true)
+			System.out.println("load negativ, error");
+		*/
 	}
 	
 	
@@ -86,15 +98,12 @@ public class VehiclePlan {
 	
 	public void add(SingleAction a) {
 		this.plan.add(a);
- 		this.generateLoadTable(); 
 	}
 	public void add(int i,SingleAction a) {
 		this.plan.add(i,a);
-		this.generateLoadTable();
 	}
 	public void remove(SingleAction a) {
 		this.plan.remove(a);
-		this.generateLoadTable();
 	}
 	public void addPairInit(SingleAction ap,SingleAction ad) {
 		// Pickup everything first then deliver by adding new pairs in the middle of the schedule
@@ -107,7 +116,9 @@ public class VehiclePlan {
 			this.plan.add(ap);
     		this.plan.add(ad);
 		}
+		this.generateLoadTable();
 	}
+	
 	public boolean addPairRandom(SingleAction ap, SingleAction ad) {
 		boolean succes = false;
 		int indexToPlacePickup = (int) (Math.random()*this.plan.size());
@@ -115,9 +126,11 @@ public class VehiclePlan {
 			
 		int indexToPlaceDeliver = (int) (Math.random()*(this.plan.size() - (indexToPlacePickup+1))) + indexToPlacePickup+1;
 		this.plan.add(indexToPlaceDeliver, ad);
+		this.generateLoadTable();
 		succes = hasOverload();
 		return !succes;
 	}
+	
 	public void removePair(SingleAction ap,SingleAction ad) {
 		this.remove(ap);
 		this.remove(ad);
