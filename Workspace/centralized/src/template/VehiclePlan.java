@@ -36,7 +36,6 @@ public class VehiclePlan {
 	protected Vehicle vehicle = null;
 	
 	protected ArrayList<SingleAction> 	plan = new ArrayList<SingleAction>();
-	//protected ArrayList<Double> 		load = new ArrayList<Double>();
 	
 	public VehiclePlan(Vehicle v) {
 		// Constructor
@@ -44,6 +43,7 @@ public class VehiclePlan {
 		return;
 	}
 	
+	@Override
 	public VehiclePlan clone() {
 		// Returns a copy of itself
 		VehiclePlan clone = new VehiclePlan(this.vehicle);
@@ -51,6 +51,7 @@ public class VehiclePlan {
 		for(SingleAction a : this.plan) {
 			clone.add(new SingleAction(a.task,a.action,a.load));
 		}
+		clone.generateLoadTable();
 		return clone;
 	}
 	
@@ -58,6 +59,7 @@ public class VehiclePlan {
 		// Update the load in the vehicle after each action
 
 		double pred = 0;
+		//System.out.println(this.plan.size());
 		for(SingleAction a : this.plan) {
 			if(a == null)
 				System.out.println("Null single action!!");
@@ -68,6 +70,9 @@ public class VehiclePlan {
 			else if(a.action == CentralizedMain.DELIVER){
 				a.load = pred - a.task.weight;
 				pred = a.load;
+			}
+			if(a.load < 0) {
+				//System.out.println("ERROR: negative load");
 			}
 		}
 	}
@@ -82,16 +87,13 @@ public class VehiclePlan {
 	}
 	
 	public void add(SingleAction a) {
-
 		this.plan.add(a);
 	}
 	public void add(int i,SingleAction a) {
 		this.plan.add(i,a);
-		this.generateLoadTable();
 	}
 	public void remove(SingleAction a) {
 		this.plan.remove(a);
-		this.generateLoadTable();
 	}
 	public void addPairInit(SingleAction ap,SingleAction ad) {
 		// Pickup everything first then deliver by adding new pairs in the middle of the schedule
@@ -104,18 +106,25 @@ public class VehiclePlan {
 			this.plan.add(ap);
     		this.plan.add(ad);
 		}
+		this.generateLoadTable();
 	}
+	
 	public boolean addPairRandom(SingleAction ap, SingleAction ad) {
-		// TODO
 		boolean succes = false;
-		int indexToPlacePickup = (int) Math.random()*this.plan.size();
+		int indexToPlacePickup = (int) (Math.random()*this.plan.size());
 		this.plan.add(indexToPlacePickup, ap);
-		int indexToPlaceDeliver = (int)(Math.random() * ((this.plan.size()+1 - indexToPlacePickup) + 1)) + indexToPlacePickup;
-		this.plan.add(indexToPlaceDeliver, ad);		
-		return succes;
+			
+		int indexToPlaceDeliver = (int) (Math.random()*(this.plan.size() - (indexToPlacePickup+1))) + indexToPlacePickup+1;
+		this.plan.add(indexToPlaceDeliver, ad);
+		
+		this.generateLoadTable();
+		succes = hasOverload();
+		return !succes;
 	}
+	
 	public void removePair(SingleAction ap,SingleAction ad) {
-		// TODO
+		this.remove(ap);
+		this.remove(ad);
 		this.generateLoadTable();
 	}
 	public void addTask(Task t) {
@@ -144,6 +153,8 @@ public class VehiclePlan {
     	Plan logist_plan = new Plan(this.vehicle.getCurrentCity());
     	City from = null;
     	City to = null;
+    	if(this.plan.isEmpty())
+    		return Plan.EMPTY;
     	
     	goFromTo(logist_plan,this.vehicle.getCurrentCity(),this.plan.get(0).task.pickupCity);
     	for(int i=0; i<this.plan.size();i++) {
