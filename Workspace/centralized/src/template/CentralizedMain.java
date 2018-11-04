@@ -250,6 +250,7 @@ public class CentralizedMain implements CentralizedBehavior {
 			for(int i=0; i< vToGet.plan.size();i++) {
 				if(vToGet.plan.get(i).task.id==ap.task.id
 						&& vToGet.plan.get(i).action!=ap.action) {
+					
 					ad=vToGet.plan.get(i);
 					break;
 				}
@@ -259,6 +260,7 @@ public class CentralizedMain implements CentralizedBehavior {
     		for(int i=0; i< vToGet.plan.size();i++) {
 				if(vToGet.plan.get(i).task.id==ad.task.id
 						&& vToGet.plan.get(i).action!=ad.action) {
+					
 					ap=vToGet.plan.get(i);
 					break;
 				}
@@ -311,14 +313,15 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.999;
-    	double Temperature  = 200;
+    	double learningRate = 0.99999;
+    	double temperature  = oldCost;
 
+    	ArrayList<VehiclePlan> oldPlan = this.cloneGlobalPlan(this.globalPlan);
     	
         do {
         	
 	    	//Create a copy of the current plan. Used to compare new and old plan. 
-	    	ArrayList<VehiclePlan> oldPlan = this.cloneGlobalPlan(this.globalPlan);
+        	oldPlan = this.cloneGlobalPlan(this.globalPlan);// TODO
 	    	oldCost = this.computeCost();
 	    	
 	    	if(!this.searchNeighbor()) {
@@ -327,24 +330,24 @@ public class CentralizedMain implements CentralizedBehavior {
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
-
-	        	if(newCost < oldCost || Math.random() < Math.exp((oldCost-newCost)/Temperature)) {
+	        	double exponentielle =  Math.exp((oldCost-newCost)/(1+temperature));
+	        	if(newCost < oldCost || Math.random() < exponentielle) {
 	        		// Keep new plan!
 	        		oldCost=newCost;
 	        	}
 	        	else {
 	        		// Don't keep the new plan
-	        		globalPlan=oldPlan;
+	        		globalPlan=oldPlan; //TODO
 		        	//System.out.println("keep old");
 	        	}
 
-	        	Temperature *= learningRate;
-	        	System.out.println(computeCost() + " - " + System.currentTimeMillis());
-            System.out.println("old cost" + oldCost +"new cost"+newCost);
+	        	temperature *= learningRate;
+	        	//System.out.println(computeCost() + " - " + System.currentTimeMillis());
+	        	//System.out.println("old cost" + oldCost +"new cost"+newCost);
 
 	    	}
     	
-        } while(true);//while(System.currentTimeMillis()-time_start < 30000) ;
+        }while(System.currentTimeMillis()-time_start < this.timeout_plan-1000) ;
     }
     
     

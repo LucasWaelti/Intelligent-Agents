@@ -126,6 +126,7 @@ public class VehiclePlan {
 			
 		int indexToPlaceDeliver = (int) (Math.random()*(this.plan.size() - (indexToPlacePickup+1))) + indexToPlacePickup+1;
 		this.plan.add(indexToPlaceDeliver, ad);
+		
 		this.generateLoadTable();
 		succes = hasOverload();
 		return !succes;
@@ -162,6 +163,8 @@ public class VehiclePlan {
     	Plan logist_plan = new Plan(this.vehicle.getCurrentCity());
     	City from = null;
     	City to = null;
+    	if(this.plan.isEmpty())
+    		return Plan.EMPTY;
     	
     	goFromTo(logist_plan,this.vehicle.getCurrentCity(),this.plan.get(0).task.pickupCity);
     	for(int i=0; i<this.plan.size();i++) {
