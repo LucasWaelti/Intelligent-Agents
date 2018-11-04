@@ -165,17 +165,17 @@ public class CentralizedMain implements CentralizedBehavior {
         }
     }
 
-    private boolean swap = false;
+    private boolean changeOrder = false;
     private boolean searchNeighbor() {
     	double randomChoose = Math.random();
      	boolean success = false; 
      	// Make a random change
     	if(randomChoose > 0.5) {
      		success = this.changingVehicle(); 
-     		swap = false;
+     		changeOrder = false;
      	}else {
      		success = this.changingOrder(); 
-     		swap = true;
+     		changeOrder = true;
     	}
     	if(!success)
     		return false;
@@ -230,7 +230,7 @@ public class CentralizedMain implements CentralizedBehavior {
 		vToChange.removePair(ap, ad);
     	succes = vToChange.addPairRandom(ap, ad);
     	
-    	return succes;
+    	return true;
 	}
     
     private boolean changingVehicle() {
@@ -284,7 +284,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	
 		succes = vToSet.addPairRandom(ap, ad);
     	vToGet.removePair(ap, ad);
-		return succes;
+		return true;
 	}
 	/************** Compute the cost of the current plan **************/
     private double computeCost() {
@@ -334,7 +334,6 @@ public class CentralizedMain implements CentralizedBehavior {
     	if(!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ap) ||
     			!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ad)) {
     		System.out.println("cancelLastChange error");
-    		
     	}
     	
     	// Put them back where they originally were taken from
@@ -357,7 +356,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	// update all vehicle plans through Stochastic Local Search
     	
         long time_start = System.currentTimeMillis();
-        
+        System.out.println("SLS algorithm launched...");
         
         double newCost = 0;
     	double oldCost = this.computeCost(); 
@@ -369,7 +368,7 @@ public class CentralizedMain implements CentralizedBehavior {
         do {
 	    	oldCost = this.computeCost();
 	    	
-	    	if(!this.searchNeighbor()) {
+	    	if(this.searchNeighbor() && !isGlobalPlanValid(this.globalPlan)) {
 	    		cancelLastChange();
 	    	}
 	    	else {
@@ -390,7 +389,8 @@ public class CentralizedMain implements CentralizedBehavior {
 
 	    	}
     	
-        }while(true);//System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
+        }while(System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
+        System.out.println("SLS algorithm terminated.");
     }
     
     
