@@ -25,7 +25,7 @@ import template.VehiclePlan;
 import template.VehiclePlan.SingleAction;
 
 
-//@SuppressWarnings("unused")
+@SuppressWarnings("unused")
 
 public class CentralizedMain implements CentralizedBehavior {
 	
@@ -316,12 +316,23 @@ public class CentralizedMain implements CentralizedBehavior {
     /************** Stochastic Local Search implementation **************/
     private void cancelLastChange() {
     	// Remove the two actions that were moved
-    	this.globalPlan.get(this.vehicleSetBefore).remove(this.ap);
-    	this.globalPlan.get(this.vehicleSetBefore).remove(this.ad);
+    	if(!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ap) ||
+    			!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ad)) {
+    		System.out.println("cancelLastChange error");
+    	}
+    	
     	
     	// Put them back where they originally were taken from
-    	this.globalPlan.get(this.vehicleGetBefore).add(this.ap_index,this.ap);
-    	this.globalPlan.get(this.vehicleGetBefore).add(this.ad_index,this.ad);
+    	if(!this.globalPlan.get(this.vehicleGetBefore).plan.isEmpty()) {
+    		if(this.apIndex <= this.globalPlan.get(this.vehicleGetBefore).plan.size()) {
+    			this.globalPlan.get(this.vehicleGetBefore).plan.add(this.apIndex,this.ap);
+    			this.globalPlan.get(this.vehicleGetBefore).plan.add(this.adIndex,this.ad);
+    		}
+    	}
+    	else {
+    		this.globalPlan.get(this.vehicleGetBefore).plan.add(this.ap);
+    		this.globalPlan.get(this.vehicleGetBefore).plan.add(this.ad);
+    	}
     }
     private void slSearch() {
     	// update all vehicle plans through Stochastic Local Search
@@ -335,18 +346,12 @@ public class CentralizedMain implements CentralizedBehavior {
     	// Simulated Annealing parameters
     	double learningRate = 0.99999;
     	double temperature  = oldCost;
-
-    	ArrayList<VehiclePlan> oldPlan = this.cloneGlobalPlan(this.globalPlan);
     	
         do {
-        	
-	    	//Create a copy of the current plan. Used to compare new and old plan. 
-        	oldPlan = this.cloneGlobalPlan(this.globalPlan);// TODO
 	    	oldCost = this.computeCost();
 	    	
 	    	if(!this.searchNeighbor()) {
-	    		//System.out.println("NO valid neighbouring solution found");
-	    		this.globalPlan = oldPlan;
+	    		cancelLastChange();
 	    	}
 	    	else {
 	        	newCost = this.computeCost();
@@ -357,8 +362,7 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	}
 	        	else {
 	        		// Don't keep the new plan
-	        		globalPlan=oldPlan; //TODO
-		        	//System.out.println("keep old");
+		        	cancelLastChange();
 	        	}
 
 	        	temperature *= learningRate;
@@ -367,7 +371,7 @@ public class CentralizedMain implements CentralizedBehavior {
 
 	    	}
     	
-        }while(System.currentTimeMillis()-time_start < this.timeout_plan-1000) ;
+        }while(System.currentTimeMillis()-time_start < 10000);//this.timeout_plan-1000) ;
     }
     
     
