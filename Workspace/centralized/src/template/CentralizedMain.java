@@ -40,6 +40,13 @@ public class CentralizedMain implements CentralizedBehavior {
     protected long timeout_setup;
     protected long timeout_plan;
     
+    private SingleAction ap = null;
+    private SingleAction ad = null;
+    private int apIndex = -1;
+    private int adIndex = -1; 
+    private int vehicleGetBefore = -1;
+    private int vehicleSetBefore = -1;
+    
     protected TaskSet getTaskSet() {
     	return this.taskSet;
     }
@@ -178,8 +185,9 @@ public class CentralizedMain implements CentralizedBehavior {
 		boolean succes = false; 
 		
 		//Randomly choose a vehicle
-    	int indexVehicleChange = (int) (Math.random()*globalPlan.size());
-    	VehiclePlan vToChange = globalPlan.get(indexVehicleChange);
+    	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
+    	this.vehicleSetBefore = this.vehicleGetBefore;
+    	VehiclePlan vToChange = globalPlan.get(this.vehicleGetBefore);
     	
     	
     	// Randomly pickup a task in the vehicle if the vehicle plan is not empty
@@ -189,25 +197,26 @@ public class CentralizedMain implements CentralizedBehavior {
     	int indexTaskToGet = (int) (Math.random()*vToChange.plan.size());
     	SingleAction actionToPick = vToChange.plan.get(indexTaskToGet);
     	
-    	SingleAction ap = null;
-    	SingleAction ad = null;
-    	
     	//Separate case if the SingleAction picked is pickup or delivery.
 		if(actionToPick.action == CentralizedMain.PICKUP) {
-			ap = actionToPick;
+			this.ap = actionToPick;
+			this.apIndex = indexTaskToGet;
 			for(int i=0; i< vToChange.plan.size();i++) {
 				if(vToChange.plan.get(i).task.id==ap.task.id 
 						&& vToChange.plan.get(i).action !=ap.action ) {
-					ad=vToChange.plan.get(i);
+					this.ad=vToChange.plan.get(i);
+					this.adIndex=i;
 					break;
 				}
 			}
     	}else {
-    		ad=actionToPick;
+    		this.ad = actionToPick;
+			this.adIndex = indexTaskToGet;
     		for(int i=0; i< vToChange.plan.size();i++) {
 				if(vToChange.plan.get(i).task.id==ad.task.id 
 						&& vToChange.plan.get(i).action !=ad.action ) {
-					ap=vToChange.plan.get(i);
+					this.ap=vToChange.plan.get(i);
+					this.apIndex = i;
 					break;
 				}
 			}
@@ -223,16 +232,16 @@ public class CentralizedMain implements CentralizedBehavior {
     	boolean succes = false;
     	//Randomly choose two vehicle to exchange tasks
     	
-    	int indexVehicleToGet = (int) (Math.random()*globalPlan.size());
-    	int indexVehicleToSet = (int) (Math.random()*globalPlan.size());
+    	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
+    	this.vehicleSetBefore = (int) (Math.random()*globalPlan.size());
     	
     	//Get 2 different indices.
-    	while(indexVehicleToSet==indexVehicleToGet) {
-    		indexVehicleToSet = (int) (Math.random()*globalPlan.size());
+    	while(this.vehicleSetBefore==this.vehicleGetBefore) {
+    		this.vehicleSetBefore = (int) (Math.random()*globalPlan.size());
     	}
     	
-    	VehiclePlan vToSet = globalPlan.get(indexVehicleToSet);
-    	VehiclePlan vToGet = globalPlan.get(indexVehicleToGet);
+    	VehiclePlan vToSet = globalPlan.get(this.vehicleSetBefore);
+    	VehiclePlan vToGet = globalPlan.get(this.vehicleGetBefore);
     	
      	// Randomly pickup a task in the vehicle to get, if the vehicle plan is not empty
     	if(vToGet.plan.size()==0)
@@ -241,27 +250,28 @@ public class CentralizedMain implements CentralizedBehavior {
     	int indexTaskToGet = (int) (Math.random()*vToGet.plan.size());
     	SingleAction actionToPick = vToGet.plan.get(indexTaskToGet);
     	
-    	SingleAction ap = null;
-    	SingleAction ad = null;
-    	
     	//Separate case if the SingleAction picked is pickup or delivery.
 		if(actionToPick.action == CentralizedMain.PICKUP) {
-			ap = actionToPick;
+			this.ap = actionToPick;
+			this.apIndex = indexTaskToGet;
 			for(int i=0; i< vToGet.plan.size();i++) {
-				if(vToGet.plan.get(i).task.id==ap.task.id
-						&& vToGet.plan.get(i).action!=ap.action) {
+				if(vToGet.plan.get(i).task.id==this.ap.task.id
+						&& vToGet.plan.get(i).action!=this.ap.action) {
 					
-					ad=vToGet.plan.get(i);
+					this.ad=vToGet.plan.get(i);
+					this.adIndex=i;
 					break;
 				}
 			}
     	}else {
-    		ad=actionToPick;
+    		this.ad=actionToPick;
+    		this.adIndex=indexTaskToGet;
     		for(int i=0; i< vToGet.plan.size();i++) {
-				if(vToGet.plan.get(i).task.id==ad.task.id
-						&& vToGet.plan.get(i).action!=ad.action) {
+				if(vToGet.plan.get(i).task.id==this.ad.task.id
+						&& vToGet.plan.get(i).action!=this.ad.action) {
 					
-					ap=vToGet.plan.get(i);
+					this.ap=vToGet.plan.get(i);
+					this.apIndex=i;
 					break;
 				}
 			}
