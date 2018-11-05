@@ -25,7 +25,7 @@ import template.VehiclePlan;
 import template.VehiclePlan.SingleAction;
 
 
-@SuppressWarnings("unused")
+//@SuppressWarnings("unused")
 
 public class CentralizedMain implements CentralizedBehavior {
 	
@@ -425,49 +425,6 @@ public class CentralizedMain implements CentralizedBehavior {
     }
     
     
-
-    private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-        City current = vehicle.getCurrentCity();
-        Plan plan = new Plan(current);
-
-        for (Task task : tasks) {
-            // move: current city => pickup location
-            for (City city : current.pathTo(task.pickupCity)) {
-                plan.appendMove(city);
-            }
-
-            plan.appendPickup(task);
-
-            // move: pickup location => delivery location
-            for (City city : task.path()) {
-                plan.appendMove(city);
-            }
-
-            plan.appendDelivery(task);
-
-            // set current city
-            current = task.deliveryCity;
-        }
-        return plan;
-    }
-    
-    private void naivePlanV2(List<Vehicle> vehicles, TaskSet tasks) {
-        
-        this.globalPlan.add(new VehiclePlan(vehicles.get(0)));
-        int v = 0, v_counter =0;
-        int changeVehicle = (int) tasks.size()/vehicles.size();
-        for (Task t : tasks) {
-        	globalPlan.get(v).add(globalPlan.get(v).new SingleAction(t,CentralizedMain.PICKUP));
-        	globalPlan.get(v).add(globalPlan.get(v).new SingleAction(t,CentralizedMain.DELIVER)); 
-        	v_counter++;
-        	if(v_counter > changeVehicle) {
-                this.globalPlan.add(new VehiclePlan(vehicles.get(v)));
-        		v++;
-        		v_counter = 0;
-        	}
-        	
-        }
-    }
     
     
     
@@ -500,16 +457,30 @@ public class CentralizedMain implements CentralizedBehavior {
         long time_start = System.currentTimeMillis();
         this.taskSet = tasks;
         
-        
-        // Create clusters of tasks (less or as much as number of vehicles)
-        ClusterGenerator clusterGenerator = new ClusterGenerator();
-        ArrayList<TasksCluster> clusters = clusterGenerator.clusterTasks(vehicles,tasks);
-        // Assign clusters to each vehicle (subdivide clusters if required)
-        clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
-        clusterGenerator.displayCluster(clusters);
-       
-        // Initialize the global plan (each VehiclePlan is created) and make it feasible
-        initGlobalPlan(clusters);
+        // If there are less vehicles than tasks
+        if(vehicles.size() < tasks.size()) {
+	        // Create clusters of tasks (less or as much as number of vehicles)
+	        ClusterGenerator clusterGenerator = new ClusterGenerator();
+	        ArrayList<TasksCluster> clusters = clusterGenerator.clusterTasks(vehicles,tasks);
+	        // Assign clusters to each vehicle (subdivide clusters if required)
+	        clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
+	        clusterGenerator.displayCluster(clusters);
+	       
+	        // Initialize the global plan (each VehiclePlan is created) and make it feasible
+	        initGlobalPlan(clusters);
+        }
+        else {
+        	// Assign all tasks to the first vehicle
+        	this.globalPlan.add(new VehiclePlan(vehicles.get(0)));
+        	for(Task t : tasks) {
+        		globalPlan.get(0).addPairInit(globalPlan.get(0).new SingleAction(t,CentralizedMain.PICKUP),globalPlan.get(0).new SingleAction(t,CentralizedMain.DELIVER));
+        	}
+        	globalPlan.get(0).generateLoadTable();
+        	
+        	for(int i=1; i<vehicles.size(); i++) {
+            	this.globalPlan.add(new VehiclePlan(vehicles.get(i)));
+        	}
+        }
         validateGlobalPlan(this.globalPlan);
         
         // Stochastic Local Search in solution space
