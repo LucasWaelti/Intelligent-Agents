@@ -411,7 +411,7 @@ public class CentralizedMain implements CentralizedBehavior {
         	}
 	    	
     	
-        }while(System.currentTimeMillis()-time_start < 60000);// < this.timeout_plan-1000) ;
+        }while(System.currentTimeMillis()-time_start < 30000);// < this.timeout_plan-1000) ;
         
         if(bestCost < newCost)
         	this.globalPlan = bestPlan;
