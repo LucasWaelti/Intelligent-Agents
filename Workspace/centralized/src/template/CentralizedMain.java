@@ -168,15 +168,21 @@ public class CentralizedMain implements CentralizedBehavior {
     private boolean changeOrder = false;
     private boolean searchNeighbor() {
     	double randomChoose = Math.random();
-     	boolean success = false; 
-     	// Make a random change
-    	if(randomChoose > 0.5) {
-     		success = this.changingVehicle(); 
-     		changeOrder = false;
-     	}else {
+     	boolean success = false;
+     	if(globalPlan.size()==1) {
      		success = this.changingOrder(); 
      		changeOrder = true;
-    	}
+     	}else {
+     		// Make a random change
+        	if(randomChoose > 0.5) {
+         		success = this.changingVehicle(); 
+         		changeOrder = false;
+         	}else {
+         		success = this.changingOrder(); 
+         		changeOrder = true;
+        	}
+     	}
+     	
     	if(!success)
     		return false;
     	// Update the load after change of plan
