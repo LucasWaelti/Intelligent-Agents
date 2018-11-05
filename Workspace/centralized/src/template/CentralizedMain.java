@@ -352,7 +352,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	
     	// Simulated Annealing parameters
     	double learningRate = 0.999;
-    	double T0 = 600;//this.computeCost();
+    	double T0 = this.computeCost()/10;
     	double temperature  = T0; 
     	
     	boolean changeSuccess = false;
@@ -362,6 +362,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	ArrayList<VehiclePlan> bestPlan = null;
     	double bestCost = Double.MAX_VALUE;
     	
+    	
     	// Determine if the cost is not changing
     	int count = 0;
     	// Total number of iterations
@@ -369,7 +370,6 @@ public class CentralizedMain implements CentralizedBehavior {
     	
         do {
 	    	oldCost = this.computeCost();
-	    	
 	    	changeSuccess = this.searchNeighbor();
 	    	
 	    	if(changeSuccess && !isGlobalPlanValid(this.globalPlan)) {
@@ -385,7 +385,10 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	double exponential =  Math.exp((oldCost-newCost)/(temperature));
 	        	if(newCost <= oldCost || Math.random() < exponential) {
 	        		// Keep new plan!
-	        		
+	        		if(newCost==oldCost)
+	        			count++;
+	        		else
+	        			count=0;
 	        	}
 	        	else {
 	        		// Don't keep the new plan, keep the previous one
@@ -398,8 +401,15 @@ public class CentralizedMain implements CentralizedBehavior {
         		}
 	        	System.out.println("Cost: " + computeCost() + " exponential: " + exponential + " temperature :" + (Double)(temperature));
 	        	temperature *= learningRate;
-	        	temperature = temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
+	        	//temperature = // temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
 	    	}
+	    	if(count>800) {
+        		temperature = T0;
+        		iter=0;
+    	    	System.out.println("HERE CHANGE \n"+count + "HERE CHANGE \n");
+        		count=0;
+        	}
+	    	
     	
         }while(System.currentTimeMillis()-time_start < 60000);// < this.timeout_plan-1000) ;
         
