@@ -351,8 +351,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.999;
-    	double T0 = this.computeCost()/10;
+    	double learningRate = 0.9999;
+    	double T0 = this.computeCost()/500;
     	double temperature  = T0; 
     	
     	boolean changeSuccess = false;
@@ -401,7 +401,7 @@ public class CentralizedMain implements CentralizedBehavior {
         		}
 	        	System.out.println("Cost: " + computeCost() + " exponential: " + exponential + " temperature :" + (Double)(temperature));
 	        	temperature *= learningRate;
-	        	//temperature = // temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
+	        	temperature =  temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
 	    	}
 	    	if(count>800) {
         		temperature = T0;
