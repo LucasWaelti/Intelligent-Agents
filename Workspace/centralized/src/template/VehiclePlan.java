@@ -71,9 +71,6 @@ public class VehiclePlan {
 				a.load = pred - a.task.weight;
 				pred = a.load;
 			}
-			if(a.load < 0) {
-				//System.out.println("ERROR: negative load");
-			}
 		}
 	}
 	
@@ -126,12 +123,6 @@ public class VehiclePlan {
 		this.remove(ap);
 		this.remove(ad);
 		this.generateLoadTable();
-	}
-	public void addTask(Task t) {
-		// TODO
-	}
-	public void removeTask(Task t) {
-		// TODO
 	}
 	
 	/************** Generate an actual Logist plan for a VehiclePlan **************/
