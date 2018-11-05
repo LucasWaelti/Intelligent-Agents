@@ -319,17 +319,6 @@ public class CentralizedMain implements CentralizedBehavior {
       
     /************** Stochastic Local Search implementation **************/
     private void cancelLastChange() {
-    	if(!this.globalPlan.get(this.vehicleSetBefore).plan.contains(this.ap) ||
-    			!this.globalPlan.get(this.vehicleSetBefore).plan.contains(this.ad)) {
-	    	this.globalPlan.get(0).plan.contains(ap);
-			this.globalPlan.get(1).plan.contains(ap);
-			this.globalPlan.get(2).plan.contains(ap); //
-			this.globalPlan.get(3).plan.contains(ap);
-			this.globalPlan.get(0).plan.contains(ad);
-			this.globalPlan.get(1).plan.contains(ad);
-			this.globalPlan.get(2).plan.contains(ad); //
-			this.globalPlan.get(3).plan.contains(ad);
-    	}
     	// Remove the two actions that were moved
     	if(!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ap) ||
     			!this.globalPlan.get(this.vehicleSetBefore).plan.remove(this.ad)) {
@@ -355,16 +344,28 @@ public class CentralizedMain implements CentralizedBehavior {
     private void slSearch() {
     	// update all vehicle plans through Stochastic Local Search
     	
+    	System.out.println("SLS algorithm launched...");
         long time_start = System.currentTimeMillis();
-        System.out.println("SLS algorithm launched...");
         
         double newCost = 0;
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.99999;
-    	double temperature  = oldCost; // 60000
+    	double learningRate = 0.999;
+    	double T0 = 600;//this.computeCost();
+    	double temperature  = T0; 
+    	
     	boolean changeSuccess = false;
+    	
+    	// Store the best plan found so far as the stochastic search might end up
+    	// with a less optimal solution when timing out. 
+    	ArrayList<VehiclePlan> bestPlan = null;
+    	double bestCost = Double.MAX_VALUE;
+    	
+    	// Determine if the cost is not changing
+    	int count = 0;
+    	// Total number of iterations
+    	int iter = 0;
     	
         do {
 	    	oldCost = this.computeCost();
@@ -375,26 +376,36 @@ public class CentralizedMain implements CentralizedBehavior {
 	    		cancelLastChange();
 	    	}
 	    	else if(changeSuccess && isGlobalPlanValid(this.globalPlan)){
+	    		iter++;
 	        	newCost = this.computeCost();
-	        	double exponential =  Math.exp((oldCost-newCost)/(1+temperature));
-	        	if(newCost < oldCost || Math.random() < exponential) {
+	        	/*if(temperature == -1) {
+	        		temperature = Math.abs(newCost-oldCost)>500 ? Math.abs(newCost-oldCost) : 1000 ;
+	        		T0 = temperature;
+	        	}*/
+	        	double exponential =  Math.exp((oldCost-newCost)/(temperature));
+	        	if(newCost <= oldCost || Math.random() < exponential) {
 	        		// Keep new plan!
-	        		oldCost=newCost;
-	        		System.out.println("Cost: " + computeCost());
+	        		
 	        	}
 	        	else {
-	        		// Don't keep the new plan
+	        		// Don't keep the new plan, keep the previous one
 		        	cancelLastChange();
 	        	}
-
+	        	if(newCost < bestCost) {
+        			// If the plan has a better cost than the one previously registered
+        			bestPlan = cloneGlobalPlan(this.globalPlan);
+        			bestCost = newCost;
+        		}
+	        	System.out.println("Cost: " + computeCost() + " exponential: " + exponential + " temperature :" + (Double)(temperature));
 	        	temperature *= learningRate;
-	        	
-	        	//System.out.println("old cost" + oldCost +"new cost"+newCost);
-
+	        	temperature = temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
 	    	}
     	
-        }while(System.currentTimeMillis()-time_start < 30000);//this.timeout_plan-1000) ;
-        //System.out.println("SLS algorithm terminated.");
+        }while(System.currentTimeMillis()-time_start < 60000);// < this.timeout_plan-1000) ;
+        
+        if(bestCost < newCost)
+        	this.globalPlan = bestPlan;
+        System.out.println("SLS algorithm terminated. Computed cost: " + this.computeCost());
     }
     
     
