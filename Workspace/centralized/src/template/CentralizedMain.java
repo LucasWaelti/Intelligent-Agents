@@ -29,6 +29,10 @@ import template.VehiclePlan.SingleAction;
 
 public class CentralizedMain implements CentralizedBehavior {
 	
+	private final int PHI = 1000; // Plateau detection constant
+	private final double DECAY_RATE = 0.9999;
+	private int T0 = 2000;
+	
 	protected static final int PICKUP = 0;
 	protected static final int DELIVER = 1;
 	protected static final int MOVE = 2 ; 
@@ -189,8 +193,7 @@ public class CentralizedMain implements CentralizedBehavior {
      	return isGlobalPlanValid(this.globalPlan); 
     }
     
-    private boolean changingOrder() {
-		boolean succes = false; 
+    private boolean changingOrder() { 
 		
 		//Randomly choose a vehicle
     	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
@@ -231,13 +234,12 @@ public class CentralizedMain implements CentralizedBehavior {
       	}
 		
 		vToChange.removePair(ap, ad);
-    	succes = vToChange.addPairRandom(ap, ad);
+    	vToChange.addPairRandom(ap, ad);
     	
     	return true;
 	}
     
     private boolean changingVehicle() {
-    	boolean succes = false;
     	//Randomly choose two vehicle to exchange tasks
     	
     	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
@@ -285,7 +287,7 @@ public class CentralizedMain implements CentralizedBehavior {
 			}
       	}
     	
-		succes = vToSet.addPairRandom(ap, ad);
+		vToSet.addPairRandom(ap, ad);
     	vToGet.removePair(ap, ad);
 		return true;
 	}
@@ -354,8 +356,8 @@ public class CentralizedMain implements CentralizedBehavior {
     	double oldCost = this.computeCost(); 
     	
     	// Simulated Annealing parameters
-    	double learningRate = 0.9999;
-    	double T0 = this.computeCost()/500;
+    	double learningRate = this.DECAY_RATE;
+    	this.T0 = (int) (this.computeCost()/100)+100;
     	double temperature  = T0; 
     	
     	boolean changeSuccess = false;
@@ -383,12 +385,15 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	newCost = this.computeCost();
 
 	        	double exponential =  Math.exp((oldCost-newCost)/(temperature));
-	        	if(newCost <= oldCost || Math.random() < exponential) {
+	        	double rand = Math.random();
+	        	if(newCost <= oldCost || rand < exponential) {
 	        		// Keep new plan!
 	        		if(newCost==oldCost)
 	        			count++;
-	        		else
+	        		else {
 	        			count=0;
+	        		}
+	        			
 	        	}
 	        	else {
 	        		// Don't keep the new plan, keep the previous one
@@ -400,16 +405,17 @@ public class CentralizedMain implements CentralizedBehavior {
         			bestCost = newCost;
         		}
 	        	temperature *= learningRate;
-	        	temperature =  temperature < T0/Math.log(1 + iter) ? T0/Math.log(1 + iter) : temperature;
+	        	temperature =  temperature < T0/Math.log(1 + iter) ? 
+	        			T0/Math.log(1 + iter) : temperature;
 	    	}
-	    	if(count>800) {
+	    	if(count>this.PHI) {
         		temperature = T0;
         		iter=0;
     	    	count=0;
         	}
 	    	
     	
-        }while(System.currentTimeMillis()-time_start < this.timeout_plan-1000) ;
+        }while(System.currentTimeMillis()-time_start < this.timeout_plan - 2000); // -100*this.taskSet.size()
         
         if(bestCost < newCost)
         	this.globalPlan = bestPlan;
@@ -444,17 +450,53 @@ public class CentralizedMain implements CentralizedBehavior {
     }
 
     /************** Produce a Plan for each Vehicle **************/
+    private List<Plan> produceLogistPlan(List<Vehicle> vehicles){
+    	// Based on the globalPlan
+    	
+    	// Order of the plans matters! And don't forget to include empty plans
+        List<Plan> plans = new ArrayList<Plan>();
+        VehiclePlan plan_i = null;
+        for(int i=0; i<vehicles.size();i++) {
+        	// Find the right vehicle's plan
+        	for(int j=0; j<this.globalPlan.size();j++) {
+        		if(this.globalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
+        			plan_i = this.globalPlan.get(j);
+        			break;
+        		}
+        	}
+        	if(plan_i != null && !plan_i.plan.isEmpty())
+        		plans.add(plan_i.convertToLogistPlan());
+        	else
+        		plans.add(Plan.EMPTY);
+        	plan_i = null;
+        } 
+        return plans;
+    }
+    private List<Plan> produceEmptyLogistPlan(List<Vehicle> vehicles){
+    	// In case there are no tasks in the topology.
+    	List<Plan> plans = new ArrayList<Plan>();
+    	for(int i=0; i<vehicles.size();i++) {
+    		plans.add(Plan.EMPTY);
+    	}
+    	return plans;
+    }
+    
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         long time_start = System.currentTimeMillis();
         this.taskSet = tasks;
+        
+        if(tasks.size() == 0) {
+        	System.out.println("No task available, generate empty plans.");
+        	return produceEmptyLogistPlan(vehicles);
+        }
         
         // If there are less vehicles than tasks
         if(vehicles.size() < tasks.size()) {
 	        // Create clusters of tasks (less or as much as number of vehicles)
 	        ClusterGenerator clusterGenerator = new ClusterGenerator();
 	        ArrayList<TasksCluster> clusters = clusterGenerator.clusterTasks(vehicles,tasks);
-	        // Assign clusters to each vehicle (subdivide clusters if required)
+	        // Assign clusters to each vehicle (subdivide clusters if required/possible)
 	        clusterGenerator.assignClusters(vehicles,clusters,this.taskSet.size());
 	        //clusterGenerator.displayCluster(clusters);
 	       
@@ -473,29 +515,14 @@ public class CentralizedMain implements CentralizedBehavior {
             	this.globalPlan.add(new VehiclePlan(vehicles.get(i)));
         	}
         }
+        // Rearrange the initial solution to make it valid if necessary
         validateGlobalPlan(this.globalPlan);
         
         // Stochastic Local Search in solution space
         this.slSearch();
         
         // Generate the Logist plans for each vehicle. 
-        // Order of the plans matters! And don't forget to include empty plans
-        List<Plan> plans = new ArrayList<Plan>();
-        VehiclePlan plan_i = null;
-        for(int i=0; i<vehicles.size();i++) {
-        	// Find the right vehicle's plan
-        	for(int j=0; j<this.globalPlan.size();j++) {
-        		if(this.globalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
-        			plan_i = this.globalPlan.get(j);
-        			break;
-        		}
-        	}
-        	if(plan_i != null && !plan_i.plan.isEmpty())
-        		plans.add(plan_i.convertToLogistPlan());
-        	else
-        		plans.add(Plan.EMPTY);
-        	plan_i = null;
-        } 
+        List<Plan> plans = produceLogistPlan(vehicles);
         
         
         long time_end = System.currentTimeMillis();
