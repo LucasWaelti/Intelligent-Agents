@@ -29,9 +29,9 @@ import template.VehiclePlan.SingleAction;
 
 public class CentralizedMain implements CentralizedBehavior {
 	
-	private final int PHI = 800; // Plateau detection constant
+	private final int PHI = 1000; // Plateau detection constant
 	private final double DECAY_RATE = 0.9999;
-	private final int T0 = 1000;
+	private int T0 = 2000;
 	
 	protected static final int PICKUP = 0;
 	protected static final int DELIVER = 1;
@@ -193,8 +193,7 @@ public class CentralizedMain implements CentralizedBehavior {
      	return isGlobalPlanValid(this.globalPlan); 
     }
     
-    private boolean changingOrder() {
-		boolean succes = false; 
+    private boolean changingOrder() { 
 		
 		//Randomly choose a vehicle
     	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
@@ -235,13 +234,12 @@ public class CentralizedMain implements CentralizedBehavior {
       	}
 		
 		vToChange.removePair(ap, ad);
-    	succes = vToChange.addPairRandom(ap, ad);
+    	vToChange.addPairRandom(ap, ad);
     	
     	return true;
 	}
     
     private boolean changingVehicle() {
-    	boolean succes = false;
     	//Randomly choose two vehicle to exchange tasks
     	
     	this.vehicleGetBefore = (int) (Math.random()*globalPlan.size());
@@ -289,7 +287,7 @@ public class CentralizedMain implements CentralizedBehavior {
 			}
       	}
     	
-		succes = vToSet.addPairRandom(ap, ad);
+		vToSet.addPairRandom(ap, ad);
     	vToGet.removePair(ap, ad);
 		return true;
 	}
@@ -359,6 +357,7 @@ public class CentralizedMain implements CentralizedBehavior {
     	
     	// Simulated Annealing parameters
     	double learningRate = this.DECAY_RATE;
+    	this.T0 = (int) (this.computeCost()/100)+100;
     	double temperature  = T0; 
     	
     	boolean changeSuccess = false;
@@ -386,12 +385,15 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	newCost = this.computeCost();
 
 	        	double exponential =  Math.exp((oldCost-newCost)/(temperature));
-	        	if(newCost <= oldCost || Math.random() < exponential) {
+	        	double rand = Math.random();
+	        	if(newCost <= oldCost || rand < exponential) {
 	        		// Keep new plan!
 	        		if(newCost==oldCost)
 	        			count++;
-	        		else
+	        		else {
 	        			count=0;
+	        		}
+	        			
 	        	}
 	        	else {
 	        		// Don't keep the new plan, keep the previous one
@@ -405,7 +407,6 @@ public class CentralizedMain implements CentralizedBehavior {
 	        	temperature *= learningRate;
 	        	temperature =  temperature < T0/Math.log(1 + iter) ? 
 	        			T0/Math.log(1 + iter) : temperature;
-	        	System.out.println("Cost: " + this.computeCost());
 	    	}
 	    	if(count>this.PHI) {
         		temperature = T0;
@@ -414,7 +415,7 @@ public class CentralizedMain implements CentralizedBehavior {
         	}
 	    	
     	
-        }while(System.currentTimeMillis()-time_start < this.timeout_plan-1000) ;
+        }while(System.currentTimeMillis()-time_start < this.timeout_plan - 2000); // -100*this.taskSet.size()
         
         if(bestCost < newCost)
         	this.globalPlan = bestPlan;
