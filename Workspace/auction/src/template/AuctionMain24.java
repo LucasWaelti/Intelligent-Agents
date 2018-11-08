@@ -17,14 +17,15 @@ import logist.topology.Topology;
 import logist.topology.Topology.City;
 
 import template.VehiclePlan;
+import template.VehiclePlan.SingleAction;
+import template.StochasticLocalSearch;
 
 /**
  * A very simple auction agent that assigns all tasks to its first vehicle and
  * handles them sequentially.
  * 
  */
-@SuppressWarnings("unused")
-public class AuctionTemplate implements AuctionBehavior {
+public class AuctionMain24 implements AuctionBehavior {
 
 	private Topology topology;
 	private TaskDistribution distribution;
@@ -49,9 +50,13 @@ public class AuctionTemplate implements AuctionBehavior {
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
+		// Long[] bids - The bid placed by each agent for the previous task -> bids.length == NumAgents
 		if (winner == agent.id()) {
 			currentCity = previous.deliveryCity;
 		}
+		for(int i=0;i<bids.length; i++)
+			System.out.println(bids[i]);
+		System.out.println();
 	}
 	
 	@Override
