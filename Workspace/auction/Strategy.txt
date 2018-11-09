@@ -1,0 +1,18 @@
+New Task came out:
+
+1) Init SLS with new Task and run SLS
+
+2) Convert GlobalPlan -> Etape
+
+3) Look into the furure:
+	- Probability of adding tasks into path
+	- Probability of adding tasks close to path 	-> what potential for this path with the new task?
+
+4) Check adversaries' behavior 
+	- Compute SLS of the adversaries
+
+5) Create bid
+	- Compute average bid for each adversary -> take the lowest? (or average again, ...)
+	- Compute difference between our and its mean
+	- Update bid value, with inertia, considering the difference of the means to adjust our mean to it. 
+
