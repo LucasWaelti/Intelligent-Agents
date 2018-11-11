@@ -33,6 +33,81 @@ public class AuctionMain24 implements AuctionBehavior {
 	private Random random;
 	private Vehicle vehicle;
 	private City currentCity;
+	
+	private final int INDIRECT_DEPTH = 1;
+	
+	private class Path{
+		// A class containing all the towns a vehicle will travel through. 
+		private ArrayList<City>   path = new ArrayList<City>();
+		private ArrayList<Double> load = new ArrayList<Double>();
+		private Vehicle vehicle = null;
+		
+		public Path(){}
+		public Path(VehiclePlan vehiclePlan, Vehicle vehicle) {
+			this.convertVehiclePlan(vehiclePlan, vehicle);
+		}
+		
+		public void convertVehiclePlan(VehiclePlan vehiclePlan, Vehicle vehicle) {
+			// Reset the stored path
+			this.path = new ArrayList<City>();
+			this.load = new ArrayList<Double>();
+			this.vehicle = vehicle;
+			
+			this.path.add(vehicle.getCurrentCity());
+			
+			// Build the path
+			List<City> itinary = null;
+			for(SingleAction a : vehiclePlan.plan) {
+				if(a.action == VehiclePlan.PICKUP) 
+					itinary = path.get(path.size()-1).pathTo(a.task.pickupCity);
+				else if(a.action == VehiclePlan.DELIVER) 
+					itinary = path.get(path.size()-1).pathTo(a.task.deliveryCity);
+				
+				if(itinary.isEmpty()) {
+					// The vehicle does not move for this SingleAction
+					this.load.set(load.size()-1,a.load);
+					continue;
+				}
+				for(City c : itinary) {
+					this.path.add(c);
+					this.load.add(a.load);
+				}
+			}
+		}
+		
+		public double computeDirectPotential(TaskDistribution td) {
+			// For new tasks directly along the path. Returns expected reward. 
+			double cumulatedReward = 0;
+			int rewardCount = 0;
+			for(int c1=0; c1<this.path.size(); c1++) {
+				for(int c2=c1; c2<this.path.size(); c2++) {
+					if(td.weight(path.get(c1), path.get(c2)) < 
+							this.vehicle.capacity()-this.load.get(c1)){
+						// If the task can be picked up. 
+						cumulatedReward += td.reward(path.get(c1), path.get(c2));
+						rewardCount++;
+					}
+				}
+			}
+			// Take into account empty plans. 
+			if(rewardCount == 0)
+				return 0;
+			else
+				return cumulatedReward/rewardCount;
+		}
+		public double computeIndirectPotential(TaskDistribution td) {
+			// For new tasks close to the path
+			double cumulatedReward = 0;
+			int rewardCount = 1;
+			for(int c1=0; c1<this.path.size(); c1++) {
+				for(int c2=c1; c2<this.path.size(); c2++) {
+					// TODO - not as easy as it seems
+				}
+			}
+			
+			return cumulatedReward/rewardCount;
+		}
+	}
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,

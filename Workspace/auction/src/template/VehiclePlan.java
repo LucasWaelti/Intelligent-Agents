@@ -14,8 +14,8 @@ import logist.topology.Topology.City;
  */
 
 public class VehiclePlan {
-	protected static int PICKUP = 0;
-	protected static int DELIVER = 0;
+	protected static final int PICKUP = 0;
+	protected static final int DELIVER = 1;
 	
 	
 	public class SingleAction{
