@@ -28,13 +28,27 @@ import template.StochasticLocalSearch;
 public class AuctionMain24 implements AuctionBehavior {
 
 	private Topology topology;
-	private TaskDistribution distribution;
+	private TaskDistribution td;
 	private Agent agent;
 	private Random random;
 	private Vehicle vehicle;
 	private City currentCity;
 	
 	private final int INDIRECT_DEPTH = 1;
+	private int SLS_TIMEOUT = 5000;
+	private double maximalRewardEstimator = 0;
+	
+	private int numberOpponents = 1;
+	
+	// Effective global plan with won tasks
+	private ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
+	private ArrayList<Task> wonTasks = new ArrayList<Task>();
+	// Hypothetical global plan with the newly auctioned task
+	private ArrayList<VehiclePlan> hypoPlan = new ArrayList<VehiclePlan>();
+	private ArrayList<Task> hypoTasks = new ArrayList<Task>();
+	
+	// Bids history
+	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
 	
 	private class Path{
 		// A class containing all the towns a vehicle will travel through. 
@@ -54,21 +68,22 @@ public class AuctionMain24 implements AuctionBehavior {
 			this.vehicle = vehicle;
 			
 			this.path.add(vehicle.getCurrentCity());
+			this.load.add(0.0);
 			
 			// Build the path
-			List<City> itinary = null;
+			List<City> itinerary = null;
 			for(SingleAction a : vehiclePlan.plan) {
 				if(a.action == VehiclePlan.PICKUP) 
-					itinary = path.get(path.size()-1).pathTo(a.task.pickupCity);
+					itinerary = path.get(path.size()-1).pathTo(a.task.pickupCity);
 				else if(a.action == VehiclePlan.DELIVER) 
-					itinary = path.get(path.size()-1).pathTo(a.task.deliveryCity);
+					itinerary = path.get(path.size()-1).pathTo(a.task.deliveryCity);
 				
-				if(itinary.isEmpty()) {
+				if(itinerary.isEmpty()) {
 					// The vehicle does not move for this SingleAction
 					this.load.set(load.size()-1,a.load);
 					continue;
 				}
-				for(City c : itinary) {
+				for(City c : itinerary) {
 					this.path.add(c);
 					this.load.add(a.load);
 				}
@@ -96,28 +111,85 @@ public class AuctionMain24 implements AuctionBehavior {
 				return cumulatedReward/rewardCount;
 		}
 		public double computeIndirectPotential(TaskDistribution td) {
-			// For new tasks close to the path
+			// Check if the vehicle can slightly deviate from its course
 			double cumulatedReward = 0;
-			int rewardCount = 1;
-			for(int c1=0; c1<this.path.size(); c1++) {
-				for(int c2=c1; c2<this.path.size(); c2++) {
-					// TODO - not as easy as it seems
+			int rewardCount = 0;
+			// From each city from the path
+			for(int c1=0; c1<this.path.size()-1; c1++) {
+				// Get its neighbours
+				for(City n : path.get(c1).neighbors()) {
+					// See any of these neighbours can join back the next city on the path
+					for(City d : n.neighbors()) {
+						if(d.id == path.get(c1+1).id) {
+							// We found a detour! Compute its potential:
+							for(int c2 = c1+1; c2<this.path.size();c2++) {
+								if(td.weight(n, path.get(c2)) < 
+										this.vehicle.capacity()-this.load.get(c1)){
+									cumulatedReward += td.reward(n, path.get(c2));
+									rewardCount++;
+								}
+							}
+						}
+					}
 				}
 			}
-			
-			return cumulatedReward/rewardCount;
+			// Take into account empty plans. 
+			if(rewardCount == 0)
+				return 0;
+			else
+				return cumulatedReward/rewardCount;
 		}
 	}
 
+	private void estimateMaximalReward() {
+		for(City c1 : this.topology.cities()) 
+			for(City c2 : this.topology.cities()) 
+				if(this.maximalRewardEstimator < this.td.reward(c1, c2)) 
+					this.maximalRewardEstimator = this.td.reward(c1, c2);
+	}
+	
+	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks) {
+		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
+		for(Vehicle v : this.agent.vehicles()) {
+			if(v.id() == this.vehicle.id()) {
+				plan.add( new VehiclePlan(this.vehicle) );
+				plan.get(plan.size()-1).initPlan(tasks);
+			}
+			else {
+				plan.add( new VehiclePlan(this.vehicle) );
+				plan.get(plan.size()-1).initPlan(null);
+			}
+		}
+		// Compute a plan for the given set of won tasks
+		StochasticLocalSearch.setGlobalPlan(plan);
+		StochasticLocalSearch.setTaskSet(wonTasks);
+		StochasticLocalSearch.slSearch(SLS_TIMEOUT);
+		
+		return plan;
+	}
+	
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
 			Agent agent) {
 
 		this.topology = topology;
-		this.distribution = distribution;
+		this.td = distribution;
 		this.agent = agent;
-		this.vehicle = agent.vehicles().get(0);
+		
+		// Get the biggest vehicle
+		Vehicle biggestVehicle = null;
+		int bestCapa = 0;
+		for(Vehicle v : this.agent.vehicles()) {
+			if(v.capacity() > bestCapa) {
+				bestCapa = v.capacity();
+				biggestVehicle = v;
+			}
+		}
+		this.vehicle = biggestVehicle;
+		
 		this.currentCity = vehicle.homeCity();
+		
+		estimateMaximalReward();
 
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
 		this.random = new Random(seed);
@@ -126,9 +198,15 @@ public class AuctionMain24 implements AuctionBehavior {
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		// Long[] bids - The bid placed by each agent for the previous task -> bids.length == NumAgents
+		this.numberOpponents = bids.length-1;
+		
 		if (winner == agent.id()) {
-			currentCity = previous.deliveryCity;
+			// Add the task to the list of won tasks
+			this.wonTasks.add(previous);
 		}
+		
+		//Display the last bids
+		bidsHistory.add(bids);
 		for(int i=0;i<bids.length; i++)
 			System.out.println(bids[i]);
 		System.out.println();
@@ -137,10 +215,48 @@ public class AuctionMain24 implements AuctionBehavior {
 	@Override
 	public Long askPrice(Task task) {
 
+		// Check for extreme cases
 		if (vehicle.capacity() < task.weight)
 			return null;
-
-		long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
+		if(this.numberOpponents == 0) {
+			return (long) 1000000000;
+		}
+		
+		// 1) Compute the plan without the newly auctioned task
+		this.globalPlan = buildGlobalPlanFromTasks(wonTasks);
+		double globalCost = StochasticLocalSearch.computeCost();
+		
+		// 2) Compute the plan with the newly auctioned task
+		this.wonTasks.add(task);
+		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks);
+		double hypoCost = StochasticLocalSearch.computeCost();
+		
+		// 3) Define floor bid
+		double taskCost = hypoCost-globalCost;
+		// TODO
+		
+		// 4) Compute task's potential
+		ArrayList<Path> paths = new ArrayList<Path>();
+		// Convert each VehiclePlan to an explicit itinerary.
+		double potential = 0;
+		for(VehiclePlan vp : hypoPlan) {
+			paths.add(new Path(vp, vp.vehicle));
+			potential += paths.get(paths.size()-1).computeDirectPotential(this.td);
+			potential += 0.9*paths.get(paths.size()-1).computeIndirectPotential(this.td);
+		}
+		potential /= this.agent.vehicles().size()/2; // Averaged expected reward
+		potential /= this.maximalRewardEstimator; // Normalised between [0,1]
+		// TODO
+		
+		// 5) Evaluate opponents' behaviour (get in their head!)
+		// TODO
+		
+		// 6) Compute bid
+		// TODO
+		
+		return (long) Math.round(1000);
+		
+		/*long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
 		long distanceSum = distanceTask
 				+ currentCity.distanceUnitsTo(task.pickupCity);
 		double marginalCost = Measures.unitsToKM(distanceSum
@@ -149,7 +265,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
 		double bid = ratio * marginalCost;
 
-		return (long) Math.round(bid);
+		return (long) Math.round(bid);*/
 	}
 
 	@Override
@@ -157,36 +273,10 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 //		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
 
-		Plan planVehicle1 = naivePlan(vehicle, tasks);
-
 		List<Plan> plans = new ArrayList<Plan>();
-		plans.add(planVehicle1);
 		while (plans.size() < vehicles.size())
 			plans.add(Plan.EMPTY);
 
 		return plans;
-	}
-
-	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-		City current = vehicle.getCurrentCity();
-		Plan plan = new Plan(current);
-
-		for (Task task : tasks) {
-			// move: current city => pickup location
-			for (City city : current.pathTo(task.pickupCity))
-				plan.appendMove(city);
-
-			plan.appendPickup(task);
-
-			// move: pickup location => delivery location
-			for (City city : task.path())
-				plan.appendMove(city);
-
-			plan.appendDelivery(task);
-
-			// set current city
-			current = task.deliveryCity;
-		}
-		return plan;
 	}
 }

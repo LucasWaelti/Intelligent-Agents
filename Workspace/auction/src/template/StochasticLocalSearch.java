@@ -3,6 +3,7 @@ package template;
 import java.util.ArrayList;
 
 import logist.topology.Topology.City;
+import logist.task.Task;
 import logist.task.TaskSet;
 
 import template.VehiclePlan;
@@ -21,13 +22,13 @@ public class StochasticLocalSearch {
     private static int vehicleGetBefore = -1;
     private static int vehicleSetBefore = -1;
     
-    private static ArrayList<VehiclePlan> globalPlan = null;
-    private static TaskSet taskSet = null;
+    private static ArrayList<VehiclePlan> globalPlan = new ArrayList<VehiclePlan>();
+    private static ArrayList<Task> taskSet = new ArrayList<Task>();
     
     public static void setGlobalPlan(ArrayList<VehiclePlan> plan) {
     	StochasticLocalSearch.globalPlan = plan;
     }
-    public static void setTaskSet(TaskSet set) {
+    public static void setTaskSet(ArrayList<Task> set) {
     	StochasticLocalSearch.taskSet = set;
     }
     
@@ -55,7 +56,7 @@ public class StochasticLocalSearch {
     			}
     			else if(plan_vehicle.plan.get(i).action == VehiclePlan.DELIVER) {
     				if(!hasBeenPicked(IDs,plan_vehicle.plan.get(i).task.id)) {
-    					System.out.println("Error: a delivery occurs before a pickup action.");
+    					//System.out.println("Error: a delivery occurs before a pickup action.");
     					return false;
     				}
     			}
@@ -84,16 +85,13 @@ public class StochasticLocalSearch {
 	private static boolean searchNeighbor() {
     	double randomChoose = Math.random();
      	boolean success = false;
-     	if(globalPlan.size()==1) {
-     		success = StochasticLocalSearch.changingOrder(); 
+     	
+ 		// Make a random change
+    	if(randomChoose > 0.5 && globalPlan.size()>1) {
+     		success = StochasticLocalSearch.changingVehicle(); 
      	}else {
-     		// Make a random change
-        	if(randomChoose > 0.5) {
-         		success = StochasticLocalSearch.changingVehicle(); 
-         	}else {
-         		success = StochasticLocalSearch.changingOrder(); 
-        	}
-     	}
+     		success = StochasticLocalSearch.changingOrder(); 
+    	}
      	
     	if(!success)
     		return false;
@@ -238,7 +236,7 @@ public class StochasticLocalSearch {
     	// Remove the two actions that were moved
     	if(!StochasticLocalSearch.globalPlan.get(StochasticLocalSearch.vehicleSetBefore).plan.remove(StochasticLocalSearch.ap) ||
     			!StochasticLocalSearch.globalPlan.get(StochasticLocalSearch.vehicleSetBefore).plan.remove(StochasticLocalSearch.ad)) {
-    		System.out.println("cancelLastChange error");
+    		//System.out.println("cancelLastChange error");
     	}
     	
     	// Put them back where they originally were taken from
@@ -261,6 +259,14 @@ public class StochasticLocalSearch {
     	// update all vehicle plans through Stochastic Local Search
     	
     	System.out.println("SLS algorithm launched...");
+    	for(VehiclePlan vp : globalPlan) {
+    		if(!vp.plan.isEmpty()) {
+    			break;
+    		}
+    		System.out.println("SLS algorithm terminated early: no task.");
+    		return;
+    	}
+    	
         long time_start = System.currentTimeMillis();
         
         double newCost = 0;
@@ -268,7 +274,7 @@ public class StochasticLocalSearch {
     	
     	// Simulated Annealing parameters
     	double learningRate = StochasticLocalSearch.DECAY_RATE;
-    	StochasticLocalSearch.T0 = (int) (StochasticLocalSearch.computeCost()/100)+100;
+    	StochasticLocalSearch.T0 = (int) StochasticLocalSearch.computeCost();//(int) (StochasticLocalSearch.computeCost()/100)+100;
     	double temperature  = T0; 
     	
     	boolean changeSuccess = false;
@@ -316,8 +322,8 @@ public class StochasticLocalSearch {
         			bestCost = newCost;
         		}
 	        	temperature *= learningRate;
-	        	temperature =  temperature < T0/Math.log(1 + iter) ? 
-	        			T0/Math.log(1 + iter) : temperature;
+	        	//temperature =  temperature < T0/Math.log(1 + iter) ? 
+	        			//T0/Math.log(1 + iter) : temperature;
 	    	}
 	    	if(count>StochasticLocalSearch.PHI) {
         		temperature = T0;

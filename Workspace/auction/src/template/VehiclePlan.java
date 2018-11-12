@@ -44,6 +44,18 @@ public class VehiclePlan {
 		return;
 	}
 	
+	public void initPlan(ArrayList<Task> tasks) {
+		if(tasks == null || tasks.isEmpty()) {
+			this.plan = new ArrayList<SingleAction>();
+			return;
+		}
+		for(Task t : tasks) {
+			this.plan.add(new SingleAction(t,PICKUP));
+			this.plan.add(new SingleAction(t,DELIVER));
+		}
+		this.generateLoadTable();
+	}
+	
 	@Override
 	public VehiclePlan clone() {
 		// Returns a copy of itself
