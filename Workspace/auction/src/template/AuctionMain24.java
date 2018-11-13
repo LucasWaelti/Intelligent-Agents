@@ -58,6 +58,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	protected long timeout_setup;
 	protected long timeout_plan;
+	protected long timeout_bid;
 	
 	private class Path{
 		// A class containing all the towns a vehicle will travel through. 
@@ -219,6 +220,7 @@ public class AuctionMain24 implements AuctionBehavior {
         // the plan method cannot execute more than timeout_plan milliseconds (303 seconds)
         timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
 		
+        timeout_bid = ls.get(LogistSettings.TimeoutKey.BID);
 		
 		
 		
