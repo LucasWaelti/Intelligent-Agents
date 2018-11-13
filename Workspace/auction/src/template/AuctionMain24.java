@@ -90,6 +90,13 @@ public class AuctionMain24 implements AuctionBehavior {
 			}
 		}
 		
+		private boolean generatesOverload(int start, int end, int weight) {
+			for(int c=start; c<=end; c++) {
+				if(this.load.get(c) + weight > this.vehicle.capacity())
+					return true;
+			}
+			return false;
+		}
 		public double computeDirectPotential(TaskDistribution td) {
 			// For new tasks directly along the path. Returns expected reward. 
 			double cumulatedReward = 0;
@@ -97,10 +104,12 @@ public class AuctionMain24 implements AuctionBehavior {
 			for(int c1=0; c1<this.path.size(); c1++) {
 				for(int c2=c1; c2<this.path.size(); c2++) {
 					if(td.weight(path.get(c1), path.get(c2)) < 
-							this.vehicle.capacity()-this.load.get(c1)){
+							this.vehicle.capacity()-this.load.get(c1) &&
+							!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
 						// If the task can be picked up. 
-						cumulatedReward += td.reward(path.get(c1), path.get(c2));
-						rewardCount++;
+						cumulatedReward += td.reward(path.get(c1), path.get(c2))*
+								td.probability(path.get(c1), path.get(c2));
+						rewardCount += td.probability(path.get(c1), path.get(c2));
 					}
 				}
 			}
@@ -124,9 +133,12 @@ public class AuctionMain24 implements AuctionBehavior {
 							// We found a detour! Compute its potential:
 							for(int c2 = c1+1; c2<this.path.size();c2++) {
 								if(td.weight(n, path.get(c2)) < 
-										this.vehicle.capacity()-this.load.get(c1)){
-									cumulatedReward += td.reward(n, path.get(c2));
-									rewardCount++;
+										this.vehicle.capacity()-this.load.get(c1) && 
+										!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
+									cumulatedReward += ( td.reward(n, path.get(c2)) -
+															(path.get(c1).distanceTo(n) + n.distanceTo(path.get(c2))) * this.vehicle.costPerKm() ) * 
+																td.probability(n, path.get(c2));
+									rewardCount += td.probability(n, path.get(c2));
 								}
 							}
 						}
@@ -156,7 +168,7 @@ public class AuctionMain24 implements AuctionBehavior {
 				plan.get(plan.size()-1).initPlan(tasks);
 			}
 			else {
-				plan.add( new VehiclePlan(this.vehicle) );
+				plan.add( new VehiclePlan(v) );
 				plan.get(plan.size()-1).initPlan(null);
 			}
 		}
@@ -230,6 +242,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		this.wonTasks.add(task);
 		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks);
 		double hypoCost = StochasticLocalSearch.computeCost();
+		this.wonTasks.remove(wonTasks.size()-1);
 		
 		// 3) Define floor bid
 		double taskCost = hypoCost-globalCost;
@@ -242,7 +255,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		for(VehiclePlan vp : hypoPlan) {
 			paths.add(new Path(vp, vp.vehicle));
 			potential += paths.get(paths.size()-1).computeDirectPotential(this.td);
-			potential += 0.9*paths.get(paths.size()-1).computeIndirectPotential(this.td);
+			potential += paths.get(paths.size()-1).computeIndirectPotential(this.td);
 		}
 		potential /= this.agent.vehicles().size()/2; // Averaged expected reward
 		potential /= this.maximalRewardEstimator; // Normalised between [0,1]
@@ -267,6 +280,30 @@ public class AuctionMain24 implements AuctionBehavior {
 
 		return (long) Math.round(bid);*/
 	}
+	
+	
+	private List<Plan> produceLogistPlan(List<Vehicle> vehicles){
+    	// Based on the globalPlan
+    	
+    	// Order of the plans matters! And don't forget to include empty plans
+        List<Plan> plans = new ArrayList<Plan>();
+        VehiclePlan plan_i = null;
+        for(int i=0; i<vehicles.size();i++) {
+        	// Find the right vehicle's plan
+        	for(int j=0; j<this.globalPlan.size();j++) {
+        		if(this.globalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
+        			plan_i = this.globalPlan.get(j);
+        			break;
+        		}
+        	}
+        	if(plan_i != null && !plan_i.plan.isEmpty())
+        		plans.add(plan_i.convertToLogistPlan());
+        	else
+        		plans.add(Plan.EMPTY);
+        	plan_i = null;
+        } 
+        return plans;
+    }
 
 	@Override
 	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
@@ -277,6 +314,6 @@ public class AuctionMain24 implements AuctionBehavior {
 		while (plans.size() < vehicles.size())
 			plans.add(Plan.EMPTY);
 
-		return plans;
+		return produceLogistPlan(this.agent.vehicles());
 	}
 }
