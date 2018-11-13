@@ -255,7 +255,7 @@ public class StochasticLocalSearch {
     		plan.generateLoadTable();
     	}
     }
-    public static void slSearch(int timeout) {
+    public static void slSearch(long timeout) {
     	// update all vehicle plans through Stochastic Local Search
     	
     	System.out.println("SLS algorithm launched...");

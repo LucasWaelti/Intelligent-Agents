@@ -37,7 +37,6 @@ public class AuctionMain24 implements AuctionBehavior {
 	private Vehicle vehicle;
 	private City currentCity;
 	
-	private final int INDIRECT_DEPTH = 1;
 	private int SLS_TIMEOUT = 5000;
 	private double maximalRewardEstimator = 0;
 	
@@ -50,15 +49,14 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	// Hypothetical global plan with the newly auctioned task
 	private ArrayList<VehiclePlan> hypoPlan = new ArrayList<VehiclePlan>();
-	private ArrayList<Task> hypoTasks = new ArrayList<Task>();
 	private double hypoCost = 0;
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
 	
-	
-	protected long timeout_setup;
-	protected long timeout_plan;
-	protected long timeout_bid;
+	// Define default timeouts (updated by XML)
+	protected long timeout_setup = 5000;
+	protected long timeout_plan  = 5000;
+	protected long timeout_bid   = 5000;
 	
 	private class Path{
 		// A class containing all the towns a vehicle will travel through. 
@@ -66,7 +64,6 @@ public class AuctionMain24 implements AuctionBehavior {
 		private ArrayList<Double> load = new ArrayList<Double>();
 		private Vehicle vehicle = null;
 		
-		public Path(){}
 		public Path(VehiclePlan vehiclePlan, Vehicle vehicle) {
 			this.convertVehiclePlan(vehiclePlan, vehicle);
 		}
@@ -108,7 +105,6 @@ public class AuctionMain24 implements AuctionBehavior {
 			return false;
 		}
 		public double computeDirectPotential(TaskDistribution td) {
-			//TODO check load on all path. 
 			// For new tasks directly along the path. Returns expected reward. 
 			double cumulatedReward = 0;
 			int rewardCount = 0;
@@ -131,7 +127,6 @@ public class AuctionMain24 implements AuctionBehavior {
 				return cumulatedReward/rewardCount;
 		}
 		public double computeIndirectPotential(TaskDistribution td) {
-			//TODO check future load and take distance into account and proba of task from a to b
 			// Check if the vehicle can slightly deviate from its course
 			double cumulatedReward = 0;
 			int rewardCount = 0;
@@ -187,7 +182,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(wonTasks);
-		StochasticLocalSearch.slSearch(SLS_TIMEOUT);
+		StochasticLocalSearch.slSearch(this.timeout_plan);
 		
 		return plan;
 	}
@@ -221,21 +216,18 @@ public class AuctionMain24 implements AuctionBehavior {
 		// this code is used to get the timeouts
         LogistSettings ls = null;
         try {
-            ls = Parsers.parseSettings("config" + File.separator + "settings_default.xml");
+            ls = Parsers.parseSettings("config" + File.separator + "settings_auction.xml");
         }
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
         }
         
-        // the setup method cannot last more than timeout_setup milliseconds (303 seconds)
+        // the setup method cannot last more than timeout_setup milliseconds
         timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
-        // the plan method cannot execute more than timeout_plan milliseconds (303 seconds)
+        // the plan method cannot execute more than timeout_plan milliseconds
         timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
-		
+        // the bid method cannot execute more than timeout_bid milliseconds
         timeout_bid = ls.get(LogistSettings.TimeoutKey.BID);
-		
-		
-		
 		
 		this.topology = topology;
 		this.td = distribution;
@@ -281,9 +273,8 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	@Override
 	public Long askPrice(Task task) {
-		// TODO no need to recompute slsTODO
-		// Check for extreme cases
-		//TODO
+		
+		// 1) Check for extreme cases
 		if (vehicle.capacity() < task.weight)
 			return null;
 		if(this.numberOpponents == 0) {
@@ -291,14 +282,14 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		
 		
-		// 2) Compute the plan with the newly auctioned task
+		// 2) Compute the hypothetical plan with the newly auctioned task
 		this.wonTasks.add(task);
 		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks);
-		double hypoCost = StochasticLocalSearch.computeCost();
+		this.hypoCost = StochasticLocalSearch.computeCost();
 		this.wonTasks.remove(wonTasks.size()-1);
 		
 		// 3) Define floor bid
-		double taskCost = hypoCost-this.globalCost;
+		double taskCost = this.hypoCost-this.globalCost;
 		// TODO
 		
 		// 4) Compute task's potential
@@ -343,9 +334,9 @@ public class AuctionMain24 implements AuctionBehavior {
         VehiclePlan plan_i = null;
         for(int i=0; i<vehicles.size();i++) {
         	// Find the right vehicle's plan
-        	for(int j=0; j<this.globalPlan.size();j++) {
-        		if(this.globalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
-        			plan_i = this.globalPlan.get(j);
+        	for(int j=0; j<this.currentGlobalPlan.size();j++) {
+        		if(this.currentGlobalPlan.get(j).vehicle.id() == vehicles.get(i).id()) {
+        			plan_i = this.currentGlobalPlan.get(j);
         			break;
         		}
         	}
