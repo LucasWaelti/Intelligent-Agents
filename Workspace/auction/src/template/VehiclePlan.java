@@ -56,6 +56,16 @@ public class VehiclePlan {
 		this.generateLoadTable();
 	}
 	
+	public void addTaskToPlan(Task task) {	
+		if(task == null)
+			System.out.println("error, task shouldn't be null");
+		this.plan.add(new SingleAction(task,PICKUP));
+		this.plan.add(new SingleAction(task,DELIVER));
+		
+		this.generateLoadTable();
+	}
+	
+	
 	@Override
 	public VehiclePlan clone() {
 		// Returns a copy of itself
