@@ -49,7 +49,6 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	// Hypothetical global plan with the newly auctioned task
 	private ArrayList<VehiclePlan> hypoPlan = new ArrayList<VehiclePlan>();
-	private ArrayList<Task> hypoTasks = new ArrayList<Task>();
 	private double hypoCost = 0;
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
@@ -106,7 +105,7 @@ public class AuctionMain24 implements AuctionBehavior {
 			return false;
 		}
 		public double computeDirectPotential(TaskDistribution td) {
-			// For new tasks directly along the path. Returns expected reward. 
+			// For new tasks directly along the path. Returns probability of finding new tasks. 
 			double cumulatedReward = 0;
 			int rewardCount = 0;
 			for(int c1=0; c1<this.path.size(); c1++) {
@@ -115,9 +114,8 @@ public class AuctionMain24 implements AuctionBehavior {
 							this.vehicle.capacity()-this.load.get(c1) &&
 							!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
 						// If the task can be picked up. 
-						cumulatedReward += td.reward(path.get(c1), path.get(c2))*
-								td.probability(path.get(c1), path.get(c2));
-						rewardCount += td.probability(path.get(c1), path.get(c2));
+						cumulatedReward += td.probability(path.get(c1), path.get(c2));
+						rewardCount++;
 					}
 				}
 			}
@@ -168,7 +166,7 @@ public class AuctionMain24 implements AuctionBehavior {
 					this.maximalRewardEstimator = this.td.reward(c1, c2);
 	}
 	
-	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks) {
+	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks, long time_out) {
 		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
 		for(Vehicle v : this.agent.vehicles()) {
 			if(v.id() == this.vehicle.id()) {
@@ -183,7 +181,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(wonTasks);
-		StochasticLocalSearch.slSearch(this.timeout_bid-500);
+		StochasticLocalSearch.slSearch(1500-500); // DEBUG
 		
 		return plan;
 	}
@@ -257,6 +255,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		// Long[] bids - The bid placed by each agent for the previous task -> bids.length == NumAgents
 		this.numberOpponents = bids.length-1;
+		System.out.println(previous);
 		
 		if (winner == agent.id()) {
 			// Add the task to the list of won tasks
@@ -284,14 +283,15 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 		
 		// 2) Compute the hypothetical plan with the newly auctioned task
-		this.hypoTasks = this.wonTasks;
-		this.hypoTasks.add(task);
-		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks);
+		this.wonTasks.add(task);
+		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks, this.timeout_bid);
 		this.hypoCost = StochasticLocalSearch.computeCost();
+		this.wonTasks.remove(wonTasks.size()-1);
 		
 		// 3) Define floor bid
-		double taskCost = this.hypoCost-this.globalCost;
-		// TODO - take into account the task's reward??
+		double floor_bid = this.hypoCost-this.globalCost;
+		if(floor_bid < 0)
+			floor_bid = 0; // The new plan is shorter! SLS sort of screwed up before. 
 		
 		// 4) Compute task's potential
 		ArrayList<Path> paths = new ArrayList<Path>();
@@ -304,13 +304,19 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		potential /= this.agent.vehicles().size()/2; // Averaged expected reward
 		potential /= this.maximalRewardEstimator; // Normalised between [0,1]
-		// TODO
+		System.out.println("Potential: " + potential);
 		
 		// 5) Evaluate opponents' behaviour (get in their head!)
-		// TODO
+		// TODO ~ mean calculation: 
+		double[] means = new double[bidsHistory.get(0).length];
+		for(int i=0; i<bidsHistory.size(); i++) {
+			
+			means[i] += 0;
+		}
+		// TODO ~ mean_effect = (their_mean-our_mean)*learning_rate
 		
 		// 6) Compute bid
-		// TODO
+		// TODO ~ floor_bid + (floor_bid*0.2)*(1-potential) + mean_effect
 		
 		return (long) Math.round(100);
 		
@@ -364,7 +370,7 @@ public class AuctionMain24 implements AuctionBehavior {
 			agentTasks.add(t);
 		}
 		
-		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks);
+		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
 
 		return produceLogistPlan(this.agent.vehicles());
 	}
