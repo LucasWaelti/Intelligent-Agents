@@ -49,6 +49,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	// Hypothetical global plan with the newly auctioned task
 	private ArrayList<VehiclePlan> hypoPlan = new ArrayList<VehiclePlan>();
+	private ArrayList<Task> hypoTasks = new ArrayList<Task>();
 	private double hypoCost = 0;
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
@@ -182,7 +183,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(wonTasks);
-		StochasticLocalSearch.slSearch(this.timeout_plan);
+		StochasticLocalSearch.slSearch(this.timeout_bid-500);
 		
 		return plan;
 	}
@@ -268,7 +269,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		bidsHistory.add(bids);
 		for(int i=0;i<bids.length; i++)
 			System.out.println(bids[i]);
-		System.out.println();
+		System.out.println("Number of won tasks by agent 24: "+ wonTasks.size());
 	}
 	
 	@Override
@@ -283,14 +284,14 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 		
 		// 2) Compute the hypothetical plan with the newly auctioned task
-		this.wonTasks.add(task);
+		this.hypoTasks = this.wonTasks;
+		this.hypoTasks.add(task);
 		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks);
 		this.hypoCost = StochasticLocalSearch.computeCost();
-		this.wonTasks.remove(wonTasks.size()-1);
 		
 		// 3) Define floor bid
 		double taskCost = this.hypoCost-this.globalCost;
-		// TODO
+		// TODO - take into account the task's reward??
 		
 		// 4) Compute task's potential
 		ArrayList<Path> paths = new ArrayList<Path>();
@@ -311,7 +312,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// 6) Compute bid
 		// TODO
 		
-		return (long) Math.round(1000);
+		return (long) Math.round(100);
 		
 		/*long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
 		long distanceSum = distanceTask
@@ -354,9 +355,16 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 //		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
 
-		List<Plan> plans = new ArrayList<Plan>();
+		/*List<Plan> plans = new ArrayList<Plan>();
 		while (plans.size() < vehicles.size())
-			plans.add(Plan.EMPTY);
+			plans.add(Plan.EMPTY);*/
+		
+		ArrayList<Task> agentTasks = new ArrayList<Task>();
+		for(Task t : tasks) {
+			agentTasks.add(t);
+		}
+		
+		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks);
 
 		return produceLogistPlan(this.agent.vehicles());
 	}
