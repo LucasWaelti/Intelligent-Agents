@@ -44,7 +44,7 @@ public class StochasticLocalSearch {
     	return false;
     }
     public static boolean isGlobalPlanValid() {
-    	//StochasticLocalSearch.globalPlan = plan;
+    	
     	int num_tasks = 0;
     	ArrayList<Integer> IDs = new ArrayList<Integer>();
     	for(VehiclePlan plan_vehicle : StochasticLocalSearch.globalPlan) {
@@ -293,7 +293,7 @@ public class StochasticLocalSearch {
     	}
     	if(emptyPlan) {
 	    	System.out.println("SLS algorithm terminated early: no task.");
-			return new ArrayList<VehiclePlan>();
+			return globalPlan;
     	}
         
         double newCost = 0;
