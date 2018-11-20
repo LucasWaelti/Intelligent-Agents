@@ -4,10 +4,10 @@ import java.io.File;
 //the list of imports
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+//import java.util.Random;
 
 import logist.LogistSettings;
-import logist.Measures;
+//import logist.Measures;
 import logist.behavior.AuctionBehavior;
 import logist.config.Parsers;
 import logist.agent.Agent;
@@ -33,12 +33,11 @@ public class AuctionMain24 implements AuctionBehavior {
 	private Topology topology;
 	private TaskDistribution td;
 	private Agent agent;
-	private Random random;
+	//private Random random;
 	private Vehicle vehicle;
-	private City currentCity;
+	//private City currentCity;
 	
-	private int SLS_TIMEOUT = 5000;
-	private double maximalRewardEstimator = 0;
+	private double maximalDistanceEstimator = 0;
 	
 	private int numberOpponents = 1;
 	
@@ -53,7 +52,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
 	
-	// Define default timeouts (updated by XML)
+	// Define default timeouts (updated by XML settings file)
 	protected long timeout_setup = 5000;
 	protected long timeout_plan  = 5000;
 	protected long timeout_bid   = 5000;
@@ -106,46 +105,52 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		public double computeDirectPotential(TaskDistribution td) {
 			// For new tasks directly along the path. Returns probability of finding new tasks. 
-			double cumulatedReward = 0;
-			int rewardCount = 0;
+			double cumulatedProba = 0;
+			int probaCount = 0;
 			for(int c1=0; c1<this.path.size(); c1++) {
 				for(int c2=c1; c2<this.path.size(); c2++) {
 					if(td.weight(path.get(c1), path.get(c2)) < 
 							this.vehicle.capacity()-this.load.get(c1) &&
 							!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
 						// If the task can be picked up. 
-						cumulatedReward += td.probability(path.get(c1), path.get(c2));
-						rewardCount++;
+						cumulatedProba += td.probability(path.get(c1), path.get(c2));
+						probaCount++;
 					}
 				}
 			}
 			// Take into account empty plans. 
-			if(rewardCount == 0)
+			if(probaCount == 0)
 				return 0;
 			else
-				return cumulatedReward/rewardCount;
+				return cumulatedProba/probaCount;
 		}
 		
 		public double computeIndirectPotential(TaskDistribution td) {
-			// Check if the vehicle can slightly deviate from its course
-			double cumulatedReward = 0;
-			int rewardCount = 0;
+			// Returns the expected cost for a small deviation from the path
+			double cumulatedCost = 0;
+			double costCount = 0;
 			// From each city from the path
 			for(int c1=0; c1<this.path.size()-1; c1++) {
 				// Get its neighbours
 				for(City n : path.get(c1).neighbors()) {
 					// See any of these neighbours can join back the next city on the path
 					for(City d : n.neighbors()) {
-						if(d.id == path.get(c1+1).id) {
+						if(d.id == path.get(c1+1).id || d.id == path.get(c1).id) {
+							int back = 0; // Index of city to return to after wandering of the path. 
+							if(d.id == path.get(c1).id)
+								back = c1;
+							else
+								back = c1+1;
 							// We found a detour! Compute its potential:
-							for(int c2 = c1+1; c2<this.path.size();c2++) {
+							for(int c2 = c1; c2<this.path.size(); c2++) {
 								if(td.weight(n, path.get(c2)) < 
 										this.vehicle.capacity()-this.load.get(c1) && 
 										!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
-									cumulatedReward += ( td.reward(n, path.get(c2)) -
-															(path.get(c1).distanceTo(n) + n.distanceTo(path.get(c2))) * this.vehicle.costPerKm() ) * 
-																td.probability(n, path.get(c2));
-									rewardCount += td.probability(n, path.get(c2));
+
+									cumulatedCost += (path.get(c1).distanceTo(n)+n.distanceTo(path.get(back)) -
+											path.get(c1).distanceTo(path.get(back)))*this.vehicle.costPerKm()*
+											td.probability(n, path.get(c2));
+									costCount += td.probability(n, path.get(c2));
 								}
 							}
 						}
@@ -153,18 +158,18 @@ public class AuctionMain24 implements AuctionBehavior {
 				}
 			}
 			// Take into account empty plans. 
-			if(rewardCount == 0)
+			if(costCount == 0)
 				return 0;
 			else
-				return cumulatedReward/rewardCount;
+				return cumulatedCost/costCount;
 		}
 	}
 
-	private void estimateMaximalReward() {
+	private void estimateMaximalNeighbourDistance() {
 		for(City c1 : this.topology.cities()) 
-			for(City c2 : this.topology.cities()) 
-				if(this.maximalRewardEstimator < this.td.reward(c1, c2)) 
-					this.maximalRewardEstimator = this.td.reward(c1, c2);
+			for(City c2 : c1.neighbors()) 
+				if(this.maximalDistanceEstimator < c1.distanceTo(c2)) 
+					this.maximalDistanceEstimator = c1.distanceTo(c2);
 	}
 	
 	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks, long timeout) {
@@ -182,35 +187,11 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
-		StochasticLocalSearch.setTaskSet(wonTasks);
-		StochasticLocalSearch.slSearch(timeout-500);
+		StochasticLocalSearch.setTaskSet(tasks);
+		plan = StochasticLocalSearch.slSearch(plan,time_out-500); // !DEBUG
 
-		
 		return plan;
 	}
-	
-	/*
-	private ArrayList<VehiclePlan> updateAGlobalPlan(Task task) {
-		
-		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
-		if(currentGlobalPlan.isEmpty()) {
-			
-			for(Vehicle v : this.agent.vehicles()) {
-				if( v.id() == this.vehicle.id()) {
-					plan.add( new VehiclePlan(v) );
-					plan.get(plan.size()-1).addTaskToPlan(task);
-				}
-				else {
-					plan.add( new VehiclePlan(v) );
-				}
-			}	
-		}else {
-			plan.get(plan.size()-1).addTaskToPlan(task);
-		}
-			
-		return plan; 
-	
-	}*/
 	
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution, Agent agent) {
@@ -246,20 +227,19 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		this.vehicle = biggestVehicle;
 		
-		this.currentCity = vehicle.homeCity();
+		//this.currentCity = vehicle.homeCity();
 		
-		estimateMaximalReward();
+		estimateMaximalNeighbourDistance();
 
-		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
-		this.random = new Random(seed);
-		
+		//long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
+		//this.random = new Random(seed);
+
 	}
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		// Long[] bids - The bid placed by each agent for the previous task -> bids.length == NumAgents
 		this.numberOpponents = bids.length-1;
-		System.out.println(previous);
 		
 		if (winner == agent.id()) {
 			// Add the task to the list of won tasks
@@ -270,14 +250,13 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 		//Display the last bids
 		bidsHistory.add(bids);
-		for(int i=0;i<bids.length; i++)
+		for(int i=0; i<bids.length; i++)
 			System.out.println(bids[i]);
-		System.out.println("Number of won tasks by agent 24: "+ wonTasks.size());
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
-		
+
 		// 1) Check for extreme cases
 		if (vehicle.capacity() < task.weight)
 			return null;
@@ -303,16 +282,19 @@ public class AuctionMain24 implements AuctionBehavior {
 		// 4) Compute task's potential
 		ArrayList<Path> paths = new ArrayList<Path>();
 		// Convert each VehiclePlan to an explicit itinerary.
-		double potential = 0;
+		double probaTaskOnPath = 0;
+		double expectedCostOfNearByTask = 0;
 		for(VehiclePlan vp : hypoPlan) {
 			paths.add(new Path(vp, vp.vehicle));
-			potential += paths.get(paths.size()-1).computeDirectPotential(this.td);
-			potential += paths.get(paths.size()-1).computeIndirectPotential(this.td);
+			probaTaskOnPath += paths.get(paths.size()-1).computeDirectPotential(this.td);
+			expectedCostOfNearByTask += paths.get(paths.size()-1).computeIndirectPotential(this.td)/
+					(this.maximalDistanceEstimator*2*vp.vehicle.costPerKm()); // Normalised cost of near tasks
 		}
-		potential /= this.agent.vehicles().size()/2; // Averaged expected reward
-		potential /= this.maximalRewardEstimator; // Normalised between [0,1]
-		// TODO
-		System.out.println(potential);
+		probaTaskOnPath /= this.agent.vehicles().size(); // Averaged probability of having a new task on the path
+		expectedCostOfNearByTask /= this.agent.vehicles().size(); // Averaged normalised cost of near tasks
+		System.out.println("probaTaskOnPath: "+probaTaskOnPath);
+		System.out.println("expectedCostOfNearByTask: "+expectedCostOfNearByTask);
+
 		
 		// 5) Evaluate opponents' behaviour (get in their head!)
 		// TODO
@@ -332,20 +314,21 @@ public class AuctionMain24 implements AuctionBehavior {
 		// 6) Compute bid
 		// TODO ~ floor_bid + (floor_bid*0.2)*(1-potential) + mean_effect
 		
-		return (long) Math.round(100);
-		
-		/*long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
-		long distanceSum = distanceTask
-				+ currentCity.distanceUnitsTo(task.pickupCity);
-		double marginalCost = Measures.unitsToKM(distanceSum
-				* vehicle.costPerKm());
+		double bid = 100;
 
-		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
-		double bid = ratio * marginalCost;
-
-		return (long) Math.round(bid);*/
+		return (long) Math.round(bid);
 	}
 	
+	private void replaceTasks(ArrayList<Task> agentTasks) {
+		for(VehiclePlan vp : this.currentGlobalPlan) {
+			for(SingleAction sa : vp.plan) {
+				for(Task t : agentTasks) {
+					if(sa.task.id == t.id)
+						sa.task = t;
+				}
+			}
+		}
+	}
 	
 	private double[] compute_mean_bid() {
 		double[] opponent_mean = new double[this.numberOpponents+1];
@@ -412,19 +395,20 @@ public class AuctionMain24 implements AuctionBehavior {
 	@Override
 	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
 		
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-
-		/*List<Plan> plans = new ArrayList<Plan>();
-		while (plans.size() < vehicles.size())
-			plans.add(Plan.EMPTY);*/
-		
 		ArrayList<Task> agentTasks = new ArrayList<Task>();
 		for(Task t : tasks) {
 			agentTasks.add(t);
 		}
 		
-		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
+		if(this.timeout_bid < this.timeout_plan)
+			this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
+		else {
+			System.out.println("Replacing tasks");
+			replaceTasks(agentTasks);
+		}
+		
+		List<Plan> plan = produceLogistPlan(this.agent.vehicles());
 
-		return produceLogistPlan(this.agent.vehicles());
+		return plan;
 	}
 }
