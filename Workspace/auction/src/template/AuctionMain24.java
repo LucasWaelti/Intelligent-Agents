@@ -49,7 +49,6 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	// Hypothetical global plan with the newly auctioned task
 	private ArrayList<VehiclePlan> hypoPlan = new ArrayList<VehiclePlan>();
-	private ArrayList<Task> hypoTasks = new ArrayList<Task>();
 	private double hypoCost = 0;
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
@@ -106,7 +105,7 @@ public class AuctionMain24 implements AuctionBehavior {
 			return false;
 		}
 		public double computeDirectPotential(TaskDistribution td) {
-			// For new tasks directly along the path. Returns expected reward. 
+			// For new tasks directly along the path. Returns probability of finding new tasks. 
 			double cumulatedReward = 0;
 			int rewardCount = 0;
 			for(int c1=0; c1<this.path.size(); c1++) {
@@ -115,9 +114,8 @@ public class AuctionMain24 implements AuctionBehavior {
 							this.vehicle.capacity()-this.load.get(c1) &&
 							!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
 						// If the task can be picked up. 
-						cumulatedReward += td.reward(path.get(c1), path.get(c2))*
-								td.probability(path.get(c1), path.get(c2));
-						rewardCount += td.probability(path.get(c1), path.get(c2));
+						cumulatedReward += td.probability(path.get(c1), path.get(c2));
+						rewardCount++;
 					}
 				}
 			}
@@ -170,6 +168,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	}
 	
 	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks, long timeout) {
+	
 		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
 		for(Vehicle v : this.agent.vehicles()) {
 			if(v.id() == this.vehicle.id()) {
@@ -185,6 +184,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(wonTasks);
 		StochasticLocalSearch.slSearch(timeout-500);
+
 		
 		return plan;
 	}
@@ -259,6 +259,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		// Long[] bids - The bid placed by each agent for the previous task -> bids.length == NumAgents
 		this.numberOpponents = bids.length-1;
+		System.out.println(previous);
 		
 		if (winner == agent.id()) {
 			// Add the task to the list of won tasks
@@ -287,12 +288,16 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 		// 2) Compute the hypothetical plan with the newly auctioned task
 		this.wonTasks.add(task);
-		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks, 2000);
+
+		this.hypoPlan = buildGlobalPlanFromTasks(wonTasks, this.timeout_bid);
 		this.hypoCost = StochasticLocalSearch.computeCost();
 		this.wonTasks.remove(wonTasks.size()-1);
 		
 		// 3) Define floor bid
-		double taskCost = this.hypoCost-this.globalCost;
+
+		double floor_bid = this.hypoCost-this.globalCost;
+		if(floor_bid < 0)
+			floor_bid = 0; // The new plan is shorter! SLS sort of screwed up before. 
 		
                     	
 		// 4) Compute task's potential
@@ -325,7 +330,7 @@ public class AuctionMain24 implements AuctionBehavior {
 
 		
 		// 6) Compute bid
-		// TODO
+		// TODO ~ floor_bid + (floor_bid*0.2)*(1-potential) + mean_effect
 		
 		return (long) Math.round(100);
 		
@@ -418,7 +423,7 @@ public class AuctionMain24 implements AuctionBehavior {
 			agentTasks.add(t);
 		}
 		
-		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, timeout_plan);
+		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
 
 		return produceLogistPlan(this.agent.vehicles());
 	}
