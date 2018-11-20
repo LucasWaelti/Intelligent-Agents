@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import logist.topology.Topology.City;
 import logist.task.Task;
-import logist.task.TaskSet;
 
 import template.VehiclePlan;
 import template.VehiclePlan.SingleAction;
@@ -45,6 +44,7 @@ public class StochasticLocalSearch {
     	return false;
     }
     public static boolean isGlobalPlanValid() {
+    	//StochasticLocalSearch.globalPlan = plan;
     	int num_tasks = 0;
     	ArrayList<Integer> IDs = new ArrayList<Integer>();
     	for(VehiclePlan plan_vehicle : StochasticLocalSearch.globalPlan) {
@@ -73,6 +73,26 @@ public class StochasticLocalSearch {
     		return true;
     }
     
+    public static void displayLoads(ArrayList<VehiclePlan> plan) {
+    	StochasticLocalSearch.globalPlan = plan;
+    	for(VehiclePlan plan_vehicle : StochasticLocalSearch.globalPlan) {
+    		ArrayList<Task> carriedTasks = new ArrayList<Task>();
+    		System.out.print(plan_vehicle.vehicle.capacity() + ": ");
+    		for(int i=0; i<plan_vehicle.plan.size();i++) {
+    			if(plan_vehicle.plan.get(i).action == VehiclePlan.PICKUP) 
+    				carriedTasks.add(plan_vehicle.plan.get(i).task);
+    			else
+    				carriedTasks.remove(plan_vehicle.plan.get(i).task);
+    			System.out.print(plan_vehicle.plan.get(i).load + "(");
+    			for(int j=0; j<carriedTasks.size();j++) {
+    				System.out.print(carriedTasks.get(j).id+",");
+    			}
+    			System.out.print(") ");
+    		}
+    		System.out.println();
+    	}
+    }
+    
     /************** Clone a global plan **************/
     public static ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> original){
     	ArrayList<VehiclePlan> newPlan = new ArrayList<VehiclePlan>();
@@ -99,7 +119,7 @@ public class StochasticLocalSearch {
     	for(VehiclePlan plan : StochasticLocalSearch.globalPlan) {
     		plan.generateLoadTable();
     	}
-     	return isGlobalPlanValid(); 
+     	return StochasticLocalSearch.isGlobalPlanValid(); 
     }
     
     private static boolean changingOrder() { 
@@ -255,19 +275,26 @@ public class StochasticLocalSearch {
     		plan.generateLoadTable();
     	}
     }
-    public static void slSearch(long timeout) {
+    public static ArrayList<VehiclePlan> slSearch(ArrayList<VehiclePlan> plan,long timeout) {
     	// update all vehicle plans through Stochastic Local Search
-    	
     	System.out.println("SLS algorithm launched...");
+    	
+    	long time_start = System.currentTimeMillis();
+    	
+    	StochasticLocalSearch.globalPlan = plan;
+    	
+    	// Immediately return if the plan is empty
+    	boolean emptyPlan = true;
     	for(VehiclePlan vp : globalPlan) {
     		if(!vp.plan.isEmpty()) {
+    			emptyPlan = false;
     			break;
     		}
-    		System.out.println("SLS algorithm terminated early: no task.");
-    		return;
     	}
-    	
-        long time_start = System.currentTimeMillis();
+    	if(emptyPlan) {
+	    	System.out.println("SLS algorithm terminated early: no task.");
+			return new ArrayList<VehiclePlan>();
+    	}
         
         double newCost = 0;
     	double oldCost = StochasticLocalSearch.computeCost(); 
@@ -288,7 +315,7 @@ public class StochasticLocalSearch {
     	// Determine if the cost is not changing
     	int count = 0;
     	// Total number of iterations
-    	int iter = 0;
+    	//int iter = 0;
     	
         do {
 	    	oldCost = StochasticLocalSearch.computeCost();
@@ -298,7 +325,7 @@ public class StochasticLocalSearch {
 	    		cancelLastChange();
 	    	}
 	    	else if(changeSuccess && isGlobalPlanValid()){
-	    		iter++;
+	    		//iter++;
 	        	newCost = StochasticLocalSearch.computeCost();
 
 	        	double exponential =  Math.exp((oldCost-newCost)/(temperature));
@@ -327,7 +354,7 @@ public class StochasticLocalSearch {
 	    	}
 	    	if(count>StochasticLocalSearch.PHI) {
         		temperature = T0;
-        		iter=0;
+        		//iter=0;
     	    	count=0;
         	}
 	    	
@@ -337,5 +364,7 @@ public class StochasticLocalSearch {
         if(bestCost < newCost)
         	StochasticLocalSearch.globalPlan = bestPlan;
         System.out.println("SLS algorithm terminated. Computed cost: " + StochasticLocalSearch.computeCost());
+        
+        return globalPlan;
     }
 }

@@ -4,10 +4,10 @@ import java.io.File;
 //the list of imports
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+//import java.util.Random;
 
 import logist.LogistSettings;
-import logist.Measures;
+//import logist.Measures;
 import logist.behavior.AuctionBehavior;
 import logist.config.Parsers;
 import logist.agent.Agent;
@@ -33,11 +33,10 @@ public class AuctionMain24 implements AuctionBehavior {
 	private Topology topology;
 	private TaskDistribution td;
 	private Agent agent;
-	private Random random;
+	//private Random random;
 	private Vehicle vehicle;
-	private City currentCity;
+	//private City currentCity;
 	
-	private int SLS_TIMEOUT = 5000;
 	private double maximalDistanceEstimator = 0;
 	
 	private int numberOpponents = 1;
@@ -53,7 +52,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
 	
-	// Define default timeouts (updated by XML)
+	// Define default timeouts (updated by XML settings file)
 	protected long timeout_setup = 5000;
 	protected long timeout_plan  = 5000;
 	protected long timeout_bid   = 5000;
@@ -186,34 +185,10 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
-		StochasticLocalSearch.setTaskSet(wonTasks);
-		StochasticLocalSearch.slSearch(1500-500); // DEBUG
-		
+		StochasticLocalSearch.setTaskSet(tasks);
+		plan = StochasticLocalSearch.slSearch(plan,1500-500); // DEBUG
 		return plan;
 	}
-	
-	/*
-	private ArrayList<VehiclePlan> updateAGlobalPlan(Task task) {
-		
-		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
-		if(currentGlobalPlan.isEmpty()) {
-			
-			for(Vehicle v : this.agent.vehicles()) {
-				if( v.id() == this.vehicle.id()) {
-					plan.add( new VehiclePlan(v) );
-					plan.get(plan.size()-1).addTaskToPlan(task);
-				}
-				else {
-					plan.add( new VehiclePlan(v) );
-				}
-			}	
-		}else {
-			plan.get(plan.size()-1).addTaskToPlan(task);
-		}
-			
-		return plan; 
-	
-	}*/
 	
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution, Agent agent) {
@@ -249,12 +224,12 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		this.vehicle = biggestVehicle;
 		
-		this.currentCity = vehicle.homeCity();
+		//this.currentCity = vehicle.homeCity();
 		
 		estimateMaximalNeighbourDistance();
 
-		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
-		this.random = new Random(seed);
+		//long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
+		//this.random = new Random(seed);
 	}
 
 	@Override
@@ -271,13 +246,13 @@ public class AuctionMain24 implements AuctionBehavior {
 		
 		//Display the last bids
 		bidsHistory.add(bids);
-		for(int i=0;i<bids.length; i++)
+		for(int i=0; i<bids.length; i++)
 			System.out.println(bids[i]);
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
-		
+
 		// 1) Check for extreme cases
 		if (vehicle.capacity() < task.weight)
 			return null;
@@ -363,7 +338,9 @@ public class AuctionMain24 implements AuctionBehavior {
 		}
 		
 		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
+		
+		List<Plan> plan = produceLogistPlan(this.agent.vehicles());
 
-		return produceLogistPlan(this.agent.vehicles());
+		return plan;
 	}
 }
