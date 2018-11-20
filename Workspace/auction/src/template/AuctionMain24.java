@@ -186,7 +186,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(tasks);
-		plan = StochasticLocalSearch.slSearch(plan,1500-500); // DEBUG
+		plan = StochasticLocalSearch.slSearch(plan,time_out-500); // !DEBUG
 		return plan;
 	}
 	
@@ -305,6 +305,16 @@ public class AuctionMain24 implements AuctionBehavior {
 		return (long) Math.round(bid);
 	}
 	
+	private void replaceTasks(ArrayList<Task> agentTasks) {
+		for(VehiclePlan vp : this.currentGlobalPlan) {
+			for(SingleAction sa : vp.plan) {
+				for(Task t : agentTasks) {
+					if(sa.task.id == t.id)
+						sa.task = t;
+				}
+			}
+		}
+	}
 	
 	private List<Plan> produceLogistPlan(List<Vehicle> vehicles){
     	// Based on the globalPlan
@@ -337,7 +347,12 @@ public class AuctionMain24 implements AuctionBehavior {
 			agentTasks.add(t);
 		}
 		
-		this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
+		if(this.timeout_bid < this.timeout_plan)
+			this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
+		else {
+			System.out.println("Replacing tasks");
+			replaceTasks(agentTasks);
+		}
 		
 		List<Plan> plan = produceLogistPlan(this.agent.vehicles());
 
