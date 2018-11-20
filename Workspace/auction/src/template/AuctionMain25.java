@@ -28,7 +28,7 @@ import template.StochasticLocalSearch;
  * handles them sequentially.
  * 
  */
-public class AuctionMain24 implements AuctionBehavior {
+public class AuctionMain25 implements AuctionBehavior {
 
 	private Topology topology;
 	private TaskDistribution td;
@@ -332,12 +332,12 @@ public class AuctionMain24 implements AuctionBehavior {
 		System.out.println("Margin: "+this.margin);
 		
 		// Compute average potential
-		double average_potential = (probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
+		double average_potential = 0;//(probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
 		
 		// Generate a bid
-		double bid = floor_bid*(1 + margin*(1-average_potential));
+		double bid = floor_bid*(1 + margin*(1+average_potential));
 		if(bid == 0) {
-			bid = agent_mean_bid*margin;
+			bid = (1+agent_mean_bid)*margin;
 		}
 
 		return (long) Math.round(bid);
@@ -356,15 +356,14 @@ public class AuctionMain24 implements AuctionBehavior {
 	
 	private double[] compute_mean_bid() {
 		double[] opponent_mean = new double[this.numberOpponents+1];
-		double sum = 0;
+		
 		//System.out.println("opponents "+ this.numberOpponents );
 		for(int opponent=0; opponent<this.numberOpponents+1;opponent++) {
-			sum = 0;	
+					
 			for(int b = 0; b < this.bidsHistory.size();b++) {
-				opponent_mean[opponent] += (1/(this.bidsHistory.size()-b))*this.bidsHistory.get(b)[opponent];
-				sum += (1/(this.bidsHistory.size()-b));
+				opponent_mean[opponent] += this.bidsHistory.get(b)[opponent];
 			}
-			opponent_mean[opponent]/=(sum);
+			opponent_mean[opponent]/=this.bidsHistory.size();
 		}
 		return opponent_mean;
 	}
