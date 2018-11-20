@@ -220,7 +220,7 @@ public class StochasticLocalSearch {
     	vToGet.removePair(ap, ad);
 		return true;
 	}
-	/************** Compute the cost of the current plan **************/
+/************** Compute the cost of the current plan **************/
     public static double computeCost() {
     	double cost = 0.0;
     	for(int v = 0; v< StochasticLocalSearch.globalPlan.size(); v++){
