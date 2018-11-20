@@ -51,6 +51,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	private double hypoCost = 0;
 	// Bids history
 	private ArrayList<Long[]> bidsHistory = new ArrayList<Long[]>();
+	private double margin = 0.2;
 	
 	// Define default timeouts (updated by XML settings file)
 	protected long timeout_setup = 5000;
@@ -113,7 +114,7 @@ public class AuctionMain24 implements AuctionBehavior {
 							this.vehicle.capacity()-this.load.get(c1) &&
 							!generatesOverload(c1,c2,td.weight(path.get(c1), path.get(c2)))){
 						// If the task can be picked up. 
-						cumulatedProba += td.probability(path.get(c1), path.get(c2));
+						cumulatedProba += (1-td.probability(path.get(c1),null))*td.probability(path.get(c1), path.get(c2));
 						probaCount++;
 					}
 				}
@@ -149,8 +150,8 @@ public class AuctionMain24 implements AuctionBehavior {
 
 									cumulatedCost += (path.get(c1).distanceTo(n)+n.distanceTo(path.get(back)) -
 											path.get(c1).distanceTo(path.get(back)))*this.vehicle.costPerKm()*
-											td.probability(n, path.get(c2));
-									costCount += td.probability(n, path.get(c2));
+											(1-td.probability(n,null))*td.probability(n, path.get(c2));
+									costCount += (1-td.probability(n,null))*td.probability(n, path.get(c2));
 								}
 							}
 						}
@@ -188,7 +189,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		// Compute a plan for the given set of won tasks
 		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(tasks);
-		plan = StochasticLocalSearch.slSearch(plan,time_out-500); // !DEBUG
+		plan = StochasticLocalSearch.slSearch(plan,timeout-500); // !DEBUG
 
 		return plan;
 	}
@@ -264,7 +265,6 @@ public class AuctionMain24 implements AuctionBehavior {
 			return (long) 1000000000;
 		}
 		
-		
 		// 2) Compute the hypothetical plan with the newly auctioned task
 		this.wonTasks.add(task);
 
@@ -291,30 +291,54 @@ public class AuctionMain24 implements AuctionBehavior {
 					(this.maximalDistanceEstimator*2*vp.vehicle.costPerKm()); // Normalised cost of near tasks
 		}
 		probaTaskOnPath /= this.agent.vehicles().size(); // Averaged probability of having a new task on the path
+		if(probaTaskOnPath*10 < 1)
+			probaTaskOnPath *= 10;
 		expectedCostOfNearByTask /= this.agent.vehicles().size(); // Averaged normalised cost of near tasks
-		System.out.println("probaTaskOnPath: "+probaTaskOnPath);
-		System.out.println("expectedCostOfNearByTask: "+expectedCostOfNearByTask);
+		//System.out.println("probaTaskOnPath: "+probaTaskOnPath);
+		//System.out.println("expectedCostOfNearByTask: "+expectedCostOfNearByTask);
 
 		
 		// 5) Evaluate opponents' behaviour (get in their head!)
-		// TODO
 		double[] opponent_mean_bid;
 		double best_opponent_mean = 0.0;
 		double agent_mean_bid = 0.0;
+		double mean_ratio = 0.0;
 		
 		if(this.bidsHistory.size()>0) {
 			opponent_mean_bid = compute_mean_bid();
 			best_opponent_mean = find_opponent_best_mean(opponent_mean_bid);
 			agent_mean_bid = get_agent_mean_bid(opponent_mean_bid);
+			
+			mean_ratio = agent_mean_bid/best_opponent_mean; // bid too small <1, bid too big >1
 		}
-		System.out.println("best_opponent_mean" + best_opponent_mean);
-		System.out.println("agent_mean_bid" + agent_mean_bid);
+		System.out.println("best_opponent_mean: " + best_opponent_mean);
+		System.out.println("agent_mean_bid:     " + agent_mean_bid);
 
 		
 		// 6) Compute bid
-		// TODO ~ floor_bid + (floor_bid*0.2)*(1-potential) + mean_effect
+		// Adapt margin
+		double learning_rate = 0;
+		if(mean_ratio > 1)
+			learning_rate = 0.5;
+		else
+			learning_rate = 0.5;
+		if(mean_ratio != 0 && this.bidsHistory.size()>0) {
+			this.margin *= ( 1 + learning_rate*(1-mean_ratio)*(1-1/this.bidsHistory.size()) );
+			if(this.margin < 0)
+				this.margin = 0;
+			else if(this.margin > 1)
+				this.margin = 1;
+		}
+		System.out.println("Margin: "+this.margin);
 		
-		double bid = 100;
+		// Compute average potential
+		double average_potential = (probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
+		
+		// Generate a bid
+		double bid = floor_bid*(1 + margin*(1+average_potential));
+		if(bid == 0) {
+			bid = (1+agent_mean_bid)*margin;
+		}
 
 		return (long) Math.round(bid);
 	}
@@ -333,7 +357,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	private double[] compute_mean_bid() {
 		double[] opponent_mean = new double[this.numberOpponents+1];
 		
-		System.out.println("opponets "+ this.numberOpponents );
+		//System.out.println("opponents "+ this.numberOpponents );
 		for(int opponent=0; opponent<this.numberOpponents+1;opponent++) {
 					
 			for(int b = 0; b < this.bidsHistory.size();b++) {
@@ -345,14 +369,13 @@ public class AuctionMain24 implements AuctionBehavior {
 	}
 	private double find_opponent_best_mean(double[] mean_bid) {
 		double min_mean = Double.MAX_VALUE; 
-		int best_opponent = 0;
+		
 		for(int opponent=0; opponent<this.numberOpponents+1;opponent++) {
 			if(opponent == agent.id())
 				continue;
 			
-			System.out.println(mean_bid[opponent]);
+			//System.out.println(mean_bid[opponent]);
 			if (mean_bid[opponent]<min_mean) {
-				best_opponent = opponent;
 				min_mean = mean_bid[opponent];
 			}			
 		}

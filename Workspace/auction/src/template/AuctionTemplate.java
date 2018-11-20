@@ -25,6 +25,8 @@ import template.VehiclePlan;
  */
 @SuppressWarnings("unused")
 public class AuctionTemplate implements AuctionBehavior {
+	
+	private boolean firstTask = true;
 
 	private Topology topology;
 	private TaskDistribution distribution;
@@ -67,7 +69,12 @@ public class AuctionTemplate implements AuctionBehavior {
 				* vehicle.costPerKm());
 
 		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
+		
 		double bid = ratio * marginalCost;
+		if(this.firstTask == true) { ////////////////// HACK //////////////////
+			bid /= 10;
+			firstTask = false;
+		}
 
 		return (long) Math.round(bid);
 	}
