@@ -10,7 +10,7 @@ import template.VehiclePlan.SingleAction;
 
 public class StochasticLocalSearch {
 	
-	private static final int PHI = 1000; // Plateau detection constant
+	private static final int PHI = 100; // Plateau detection constant
 	private static final double DECAY_RATE = 0.9999;
 	private static int T0 = 2000;
 	
