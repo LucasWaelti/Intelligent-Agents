@@ -175,6 +175,14 @@ public class AuctionMain24 implements AuctionBehavior {
 					this.maximalDistanceEstimator = c1.distanceTo(c2);
 	}
 	
+	private ArrayList<VehiclePlan> cloneGlobalPlan(ArrayList<VehiclePlan> refPlan){
+		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
+		for(VehiclePlan vp : refPlan) {
+			plan.add(vp.clone());
+		}
+		return plan;
+	}
+	
 	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<Task> tasks, long timeout) {
 	
 		ArrayList<VehiclePlan> plan = new ArrayList<VehiclePlan>();
@@ -198,32 +206,34 @@ public class AuctionMain24 implements AuctionBehavior {
 	private ArrayList<VehiclePlan> buildGlobalPlanFromTasks(ArrayList<VehiclePlan> gp, 
 															ArrayList<Task> tasks, 
 															Task t, long timeout) {
-		if(gp.isEmpty()) {
+		ArrayList<VehiclePlan> plan = cloneGlobalPlan(gp);
+		
+		if(plan.isEmpty()) {
 			for(Vehicle v : this.agent.vehicles()) {
 				if(v.id() == this.vehicle.id()) {
-					gp.add( new VehiclePlan(this.vehicle) );
-					gp.get(gp.size()-1).initPlan(tasks);
+					plan.add( new VehiclePlan(this.vehicle) );
+					plan.get(plan.size()-1).initPlan(tasks);
 				}
 				else {
-					gp.add( new VehiclePlan(v) );
-					gp.get(gp.size()-1).initPlan(null);
+					plan.add( new VehiclePlan(v) );
+					plan.get(plan.size()-1).initPlan(null);
 				}
 			}
 		}
 		else {
-			for(VehiclePlan vp : gp) {
+			for(VehiclePlan vp : plan) {
 				if(vp.vehicle.id() == this.vehicle.id()) {
-					vp.add(vp.new SingleAction(t,VehiclePlan.PICKUP));
-					vp.add(vp.new SingleAction(t,VehiclePlan.DELIVER));
+					vp.plan.add(vp.new SingleAction(t,VehiclePlan.PICKUP));
+					vp.plan.add(vp.new SingleAction(t,VehiclePlan.DELIVER));
 					break;
 				}
 			}
 		}
 		// Compute a plan for the given set of won tasks
-		StochasticLocalSearch.setGlobalPlan(gp);
+		StochasticLocalSearch.setGlobalPlan(plan);
 		StochasticLocalSearch.setTaskSet(tasks);
-		gp = StochasticLocalSearch.slSearch(gp,timeout-500); 
-		return gp;
+		plan = StochasticLocalSearch.slSearch(plan,timeout-500); 
+		return plan;
 	}
 	
 	@Override
@@ -341,6 +351,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		this.wonTasks.add(task);
 
 		this.hypoPlan = buildGlobalPlanFromTasks(this.currentGlobalPlan,wonTasks,task,this.timeout_bid);
+		//this.hypoPlan = buildGlobalPlanFromTasks(wonTasks,this.timeout_bid);
 		this.hypoCost = StochasticLocalSearch.computeCost();
 		this.wonTasks.remove(wonTasks.size()-1);
 		
