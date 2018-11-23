@@ -32,7 +32,7 @@
 				<set color="#0000ff" />
 				<set home="Amsterdam" />
 				<set speed="60" />
-				<set capacity="80" />
+				<set capacity="60" />
 				<set cost-per-km="5" />
 			</vehicle>
 			
@@ -41,7 +41,7 @@
 				<set color="#ff0000" />
 				<set home="Eindhoven" />
 				<set speed="90" />
-				<set capacity="80" />
+				<set capacity="60" />
 				<set cost-per-km="5" />
 			</vehicle>
 		</company>
@@ -52,7 +52,7 @@
 				<set color="#00ff00" />
 				<set home="Den Haag" />
 				<set speed="90" />
-				<set capacity="80" />
+				<set capacity="90" />
 				<set cost-per-km="5" />
 			</vehicle>
 			
@@ -61,7 +61,7 @@
 				<set color="#ffff00" />
 				<set home="Apeldoorn" />
 				<set speed="90" />
-				<set capacity="80" />
+				<set capacity="29" />
 				<set cost-per-km="5" />
 			</vehicle>
 		</company>

@@ -55,6 +55,8 @@ public class AuctionMain24 implements AuctionBehavior {
 	private double margin = 0.2;
 	private boolean behind = false;
 	
+	private int opponent_max_weight = Integer.MAX_VALUE;
+	
 	// Define default timeouts (updated by XML settings file)
 	protected long timeout_setup = 5000;
 	protected long timeout_plan  = 5000;
@@ -291,6 +293,12 @@ public class AuctionMain24 implements AuctionBehavior {
 			this.currentGlobalPlan = this.hypoPlan;
 		}
 		
+		for(int opponent=0; opponent<this.numberOpponents+1;opponent++) {
+			if(bids[opponent]==null && opponent!=this.agent.id()) {
+				this.opponent_max_weight = previous.weight;
+			}
+		}
+
 		//Display the last bids
 		bidsHistory.add(bids);
 		for(int i=0; i<bids.length; i++)
@@ -304,8 +312,10 @@ public class AuctionMain24 implements AuctionBehavior {
 		for(int opponent=0; opponent<this.numberOpponents+1;opponent++) {
 			sum = 0;	
 			for(int b = 0; b < this.bidsHistory.size();b++) {
-				opponent_mean[opponent] += (1/Math.sqrt(this.bidsHistory.size()-b))*this.bidsHistory.get(b)[opponent];
-				sum += (1/Math.sqrt(this.bidsHistory.size()-b));
+				if(this.bidsHistory.get(b)[opponent]!=null) {
+					opponent_mean[opponent] += (1/Math.sqrt(this.bidsHistory.size()-b))*this.bidsHistory.get(b)[opponent];
+					sum += (1/Math.sqrt(this.bidsHistory.size()-b));
+				}	
 			}
 			opponent_mean[opponent]/=(sum);
 		}
@@ -343,6 +353,11 @@ public class AuctionMain24 implements AuctionBehavior {
 		if (vehicle.capacity() < task.weight)
 			return null;
 		if(this.numberOpponents == 0) {
+			long bid = 1000000000;
+			return bid;
+		}
+		
+		if(task.weight>=this.opponent_max_weight) {
 			long bid = 1000000000;
 			return bid;
 		}
@@ -423,10 +438,14 @@ public class AuctionMain24 implements AuctionBehavior {
 			
 		}
 		
+		
+		
 		// Compute average potential
 		double average_potential = (probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
 		
 		// Generate a bid
+		
+			
 		double bid = floor_bid*(1 + margin*(1-average_potential/2));
 		if(bid == 0) {
 			bid = agent_mean_bid*margin;
@@ -438,7 +457,11 @@ public class AuctionMain24 implements AuctionBehavior {
 		System.out.println("Margin:	" + this.margin);
 		System.out.println("Bid:	" + bid);
 
-		return (long) Math.round(bid);
+		if (this.wonTasks.size()<5) {
+			return (long) Math.round(floor_bid);
+		}else {
+			return (long) Math.round(bid);
+		}
 	}
 	
 	private void replaceTasks(ArrayList<Task> agentTasks) {
