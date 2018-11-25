@@ -3,28 +3,9 @@
 <agents>
 	<!-- A list of agents and their behavior classes -->
 	
-	<!-- #### AUCTION AGENTS ### -->
-	<agent name="auction-random">
-		<set class-path="bin/"/>
-		<set class-name="template.AuctionTemplate"/>
-	</agent>
-
 	<!-- our solution -->
 	<agent name="auction-main-24">
 		<set class-path="bin/"/>
 		<set class-name="template.AuctionMain24"/>
-	</agent>
-
-	<!-- our solution -->
-	<agent name="auction-main-25">
-		<set class-path="bin/"/>
-		<set class-name="template.AuctionMain25"/>
-	</agent>
-
-	<!-- our solution -->
-	<agent name="DummySafe">
-		<set class-path="bin/"/>
-		<set class-name="template.DummySafe"/>
-	</agent>
-	
+	</agent>	
 </agents>
