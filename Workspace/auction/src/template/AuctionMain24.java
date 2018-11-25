@@ -5,7 +5,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 //import java.util.Random;
-import java.util.Random;
+//import java.util.Random;
 
 import logist.LogistSettings;
 //import logist.Measures;
@@ -34,7 +34,7 @@ public class AuctionMain24 implements AuctionBehavior {
 	private Topology topology;
 	private TaskDistribution td;
 	private Agent agent;
-	private Random random;
+	//private Random random;
 	private Vehicle vehicle;
 	//private City currentCity;
 	
@@ -277,7 +277,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		estimateMaximalNeighbourDistance();
 
 		//long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
-		this.random = new Random();
+		//this.random = new Random();
 
 	}
 
@@ -438,24 +438,22 @@ public class AuctionMain24 implements AuctionBehavior {
 			
 		}
 		
-		
-		
 		// Compute average potential
-		double average_potential = (probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
+		double potential = (probaTaskOnPath+(1-expectedCostOfNearByTask))/2;
 		
-		// Generate a bid
-		
-			
-		double bid = floor_bid*(1 + margin*(1-average_potential/2));
+		// Generate a bid	
+		double bid = floor_bid*(1 + margin*(1-potential/2));
 		if(bid == 0) {
 			bid = agent_mean_bid*margin;
 		}
 		
+		/*
 		System.out.println("Agent ID: " + agent.id());
 		System.out.println("best_opponent_mean:	" + best_opponent_mean);
 		System.out.println("agent_mean_bid:		" + agent_mean_bid);
 		System.out.println("Margin:	" + this.margin);
 		System.out.println("Bid:	" + bid);
+		*/
 
 		if (this.wonTasks.size()<5) {
 			return (long) Math.round(floor_bid);
@@ -510,7 +508,7 @@ public class AuctionMain24 implements AuctionBehavior {
 		if(this.timeout_bid < this.timeout_plan)
 			this.currentGlobalPlan = buildGlobalPlanFromTasks(agentTasks, this.timeout_plan);
 		else {
-			System.out.println("Replacing tasks");
+			//System.out.println("Replacing tasks");
 			replaceTasks(agentTasks);
 		}
 		
